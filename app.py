@@ -1,20 +1,21 @@
 import os
 import requests
-from flask import Flask, request, jsonify, render_template_string
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-DEEPSEEK_KEY = os.environ['DEEPSEEK_KEY']
-DEEPSEEK_URL = 'https://api.deepseek.com/v1/chat/completions'
+GROQ_KEY = os.environ['GROQ_KEY']
+GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 
+TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '')
 memory = ''
 
 def ask(prompt):
     r = requests.post(
-        DEEPSEEK_URL,
-        headers={'Authorization': f'Bearer {DEEPSEEK_KEY}', 'Content-Type': 'application/json'},
+        GROQ_URL,
+        headers={'Authorization': f'Bearer {GROQ_KEY}', 'Content-Type': 'application/json'},
         json={
-            'model': 'deepseek-chat',
+            'model': 'llama-3.3-70b-versatile',
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': 0.95,
             'max_tokens': 2000
@@ -24,8 +25,9 @@ def ask(prompt):
     return r.json()['choices'][0]['message']['content'].strip()
 
 def send_telegram(chat_id, text):
-    requests.post(f'https://api.telegram.org/bot{os.environ["TELEGRAM_TOKEN"]}/sendMessage',
-                  json={'chat_id': chat_id, 'text': text[:4000]}, timeout=10)
+    if TELEGRAM_TOKEN:
+        requests.post(f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage',
+                      json={'chat_id': chat_id, 'text': text[:4000]}, timeout=10)
 
 HTML = '''
 <!DOCTYPE html>
@@ -38,8 +40,8 @@ HTML = '''
         body { margin:0; padding:0; background:#111; color:#eee; font-family:system-ui; height:100vh; display:flex; flex-direction:column; }
         #chat { flex:1; overflow-y:auto; padding:10px; }
         .msg { margin:5px 0; padding:8px 12px; border-radius:15px; max-width:85%; word-wrap:break-word; }
-        .user { background:#1a73e8; align-self:flex-end; text-align:right; }
-        .dip { background:#333; align-self:flex-start; }
+        .user { background:#1a73e8; margin-left:auto; text-align:right; }
+        .dip { background:#333; margin-right:auto; }
         #form { display:flex; padding:10px; background:#222; }
         #input { flex:1; padding:10px; border:none; border-radius:20px; background:#444; color:#fff; }
         #send { margin-left:5px; padding:10px 20px; border:none; border-radius:20px; background:#1a73e8; color:#fff; }
@@ -100,6 +102,8 @@ def chat():
 @app.route('/webhook', methods=['POST'])
 def webhook():
     global memory
+    if not TELEGRAM_TOKEN:
+        return jsonify({'ok': True})
     data = request.json
     msg = data.get('message', {})
     text = msg.get('text', '')
