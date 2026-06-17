@@ -24,26 +24,19 @@ def save_memory_local(text):
 def sync_to_gist():
     global GIST_ID
     if not GIST_TOKEN:
-        return 'No GIST_TOKEN'
+        return 'No token'
     try:
         items = db.all()
         content = '\n'.join([f"{item['time']}: {item['text']}" for item in items])
-        headers = {'Authorization': f'token {GIST_TOKEN}', 'Accept': 'application/vnd.github+json'}
+        headers = {'Authorization': f'token {GIST_TOKEN}'}
+        payload = {'description': 'dip', 'public': False, 'files': {'dip.txt': {'content': content}}}
         if GIST_ID:
-            r = requests.patch(f'https://api.github.com/gists/{GIST_ID}', json={
-                'files': {'dip-memory.txt': {'content': content}}
-            }, headers=headers)
+            r = requests.patch(f'https://api.github.com/gists/{GIST_ID}', json=payload, headers=headers)
         else:
-            r = requests.post('https://api.github.com/gists', json={
-                'public': False,
-                'files': {'dip-memory.txt': {'content': content}}
-            }, headers=headers)
+            r = requests.post('https://api.github.com/gists', json=payload, headers=headers)
             if r.status_code == 201:
                 GIST_ID = r.json().get('id')
-                return 'Gist created'
-            else:
-                return f'Error: {r.status_code} {r.text}'
-        return 'Synced'
+        return f'{r.status_code}: {r.text[:200]}'
     except Exception as e:
         return str(e)
 
@@ -52,11 +45,11 @@ def load_from_gist():
     if not GIST_TOKEN or not GIST_ID:
         return
     try:
-        headers = {'Authorization': f'token {GIST_TOKEN}', 'Accept': 'application/vnd.github+json'}
+        headers = {'Authorization': f'token {GIST_TOKEN}'}
         r = requests.get(f'https://api.github.com/gists/{GIST_ID}', headers=headers)
         if r.status_code == 200:
             files = r.json().get('files', {})
-            content = files.get('dip-memory.txt', {}).get('content', '')
+            content = files.get('dip.txt', {}).get('content', '')
             if content:
                 for line in content.strip().split('\n'):
                     if ': ' in line:
