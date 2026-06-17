@@ -31,15 +31,23 @@ def search_duckduckgo(query):
             'q': query, 'format': 'json', 'no_html': 1, 'skip_disambig': 1
         }, timeout=10)
         data = r.json()
+        results = []
+        
         abstract = data.get('AbstractText', '')
+        abstract_url = data.get('AbstractURL', '')
         if abstract:
-            return abstract
+            results.append(f'{abstract}\nСсылка: {abstract_url}')
+        
         related = data.get('RelatedTopics', [])
-        if related and 'Text' in related[0]:
-            return related[0]['Text']
+        for topic in related[:3]:
+            if 'Text' in topic and 'FirstURL' in topic:
+                results.append(f'{topic["Text"]}\nСсылка: {topic["FirstURL"]}')
+        
+        if results:
+            return '\n\n'.join(results)
         return 'Ничего не найдено.'
     except:
-        return 'Поиск временно недоступен.'
+        return 'Поиск временно недоступен.''
 
 def send_telegram(chat_id, text):
     if TELEGRAM_TOKEN:
