@@ -16,7 +16,7 @@ def ask(prompt):
         GROQ_URL,
         headers={'Authorization': f'Bearer {GROQ_KEY}', 'Content-Type': 'application/json'},
         json={
-            'model': 'llama-3.1-70b-versatile',
+            'model': 'gemma2-9b-it',
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': 0.95,
             'max_tokens': 2000
