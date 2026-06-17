@@ -10,7 +10,7 @@ GROQ_KEY = os.environ['GROQ_KEY']
 GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '')
 GIST_TOKEN = os.environ.get('GIST_TOKEN', '')
-GIST_ID = None
+GIST_ID = 'af505f353ec526e45ec812ac1cc26842'
 
 db = TinyDB('memory.json')
 
