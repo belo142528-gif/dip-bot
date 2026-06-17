@@ -47,7 +47,7 @@ def search_duckduckgo(query):
             return '\n\n'.join(results)
         return 'Ничего не найдено.'
     except:
-        return 'Поиск временно недоступен.''
+        return 'Поиск временно недоступен.'
 
 def send_telegram(chat_id, text):
     if TELEGRAM_TOKEN:
