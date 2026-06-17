@@ -9,7 +9,7 @@ app = Flask(__name__)
 GROQ_KEY = os.environ['GROQ_KEY']
 GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
 TELEGRAM_TOKEN = os.environ.get('TELEGRAM_TOKEN', '')
-GIST_TOKEN = os.environ['GIST_TOKEN']
+GIST_TOKEN = os.environ.get('GIST_TOKEN', '')
 GIST_ID = None
 
 db = TinyDB('memory.json')
@@ -23,10 +23,12 @@ def save_memory_local(text):
 
 def sync_to_gist():
     global GIST_ID
+    if not GIST_TOKEN:
+        return 'No GIST_TOKEN'
     try:
         items = db.all()
         content = '\n'.join([f"{item['time']}: {item['text']}" for item in items])
-        headers = {'Authorization': f'token {GIST_TOKEN}'}
+        headers = {'Authorization': f'token {GIST_TOKEN}', 'Accept': 'application/vnd.github+json'}
         if GIST_ID:
             r = requests.patch(f'https://api.github.com/gists/{GIST_ID}', json={
                 'files': {'dip-memory.txt': {'content': content}}
@@ -37,23 +39,29 @@ def sync_to_gist():
                 'files': {'dip-memory.txt': {'content': content}}
             }, headers=headers)
             if r.status_code == 201:
-                GIST_ID = r.json()['id']
-    except:
-        pass
+                GIST_ID = r.json().get('id')
+                return 'Gist created'
+            else:
+                return f'Error: {r.status_code} {r.text}'
+        return 'Synced'
+    except Exception as e:
+        return str(e)
 
 def load_from_gist():
     global GIST_ID
+    if not GIST_TOKEN or not GIST_ID:
+        return
     try:
-        if GIST_ID:
-            headers = {'Authorization': f'token {GIST_TOKEN}'}
-            r = requests.get(f'https://api.github.com/gists/{GIST_ID}', headers=headers)
-            if r.status_code == 200:
-                files = r.json().get('files', {})
-                content = files.get('dip-memory.txt', {}).get('content', '')
-                if content:
-                    for line in content.strip().split('\n'):
-                        if ': ' in line:
-                            text = line.split(': ', 1)[-1]
+        headers = {'Authorization': f'token {GIST_TOKEN}', 'Accept': 'application/vnd.github+json'}
+        r = requests.get(f'https://api.github.com/gists/{GIST_ID}', headers=headers)
+        if r.status_code == 200:
+            files = r.json().get('files', {})
+            content = files.get('dip-memory.txt', {}).get('content', '')
+            if content:
+                for line in content.strip().split('\n'):
+                    if ': ' in line:
+                        text = line.split(': ', 1)[-1]
+                        if not db.contains(lambda doc: doc['text'] == text):
                             save_memory_local(text)
     except:
         pass
@@ -165,6 +173,11 @@ HTML = '''
 @app.route('/')
 def home():
     return HTML
+
+@app.route('/sync')
+def sync():
+    result = sync_to_gist()
+    return jsonify({'result': result, 'gist_id': GIST_ID})
 
 @app.route('/chat', methods=['POST'])
 def chat():
