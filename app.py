@@ -28,15 +28,18 @@ def sync_to_gist():
     try:
         items = db.all()
         content = '\n'.join([f"{item['time']}: {item['text']}" for item in items])
-        headers = {'Authorization': f'token {GIST_TOKEN}'}
-        payload = {'description': 'dip', 'public': False, 'files': {'dip.txt': {'content': content}}}
+        headers = {
+            'Authorization': f'token {GIST_TOKEN}',
+            'Content-Type': 'application/json'
+        }
+        payload = '{"description":"dip","public":false,"files":{"dip.txt":{"content":"' + content.replace('"', '\\"').replace('\n', '\\n') + '"}}}'
         if GIST_ID:
-            r = requests.patch(f'https://api.github.com/gists/{GIST_ID}', json=payload, headers=headers)
+            r = requests.patch(f'https://api.github.com/gists/{GIST_ID}', data=payload, headers=headers)
         else:
-            r = requests.post('https://api.github.com/gists', json=payload, headers=headers)
+            r = requests.post('https://api.github.com/gists', data=payload, headers=headers)
             if r.status_code == 201:
                 GIST_ID = r.json().get('id')
-        return f'{r.status_code}: {r.text[:200]}'
+        return f'{r.status_code}: {r.text[:300]}'
     except Exception as e:
         return str(e)
 
