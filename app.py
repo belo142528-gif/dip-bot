@@ -1,6 +1,6 @@
 import os
 import requests
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 from datetime import datetime
 from tinydb import TinyDB
 
@@ -24,24 +24,20 @@ def save_memory_local(text):
 def sync_to_gist():
     global GIST_ID
     if not GIST_TOKEN:
-        return 'No token'
+        return
     try:
         items = db.all()
         content = '\n'.join([f"{item['time']}: {item['text']}" for item in items])
-        headers = {
-            'Authorization': f'token {GIST_TOKEN}',
-            'Content-Type': 'application/json'
-        }
+        headers = {'Authorization': f'token {GIST_TOKEN}', 'Content-Type': 'application/json'}
         payload = '{"description":"dip","public":false,"files":{"dip.txt":{"content":"' + content.replace('"', '\\"').replace('\n', '\\n') + '"}}}'
         if GIST_ID:
-            r = requests.patch(f'https://api.github.com/gists/{GIST_ID}', data=payload, headers=headers)
+            requests.patch(f'https://api.github.com/gists/{GIST_ID}', data=payload, headers=headers)
         else:
             r = requests.post('https://api.github.com/gists', data=payload, headers=headers)
             if r.status_code == 201:
                 GIST_ID = r.json().get('id')
-        return f'{r.status_code}: {r.text[:300]}'
-    except Exception as e:
-        return str(e)
+    except:
+        pass
 
 def load_from_gist():
     global GIST_ID
@@ -67,7 +63,7 @@ memory = load_memory()
 
 def save_memory(text):
     save_memory_local(text)
-    if len(db) % 5 == 0:
+    if len(db) % 10 == 0:
         sync_to_gist()
 
 def ask(prompt):
@@ -168,12 +164,18 @@ HTML = '''
 
 @app.route('/')
 def home():
-    return HTML
+    return HTML + '<div style="text-align:center;padding:10px;"><a href="/download" style="color:#888;font-size:12px;">Скачать память</a></div>'
 
 @app.route('/sync')
 def sync():
     result = sync_to_gist()
-    return jsonify({'result': result, 'gist_id': GIST_ID})
+    return jsonify({'result': result or 'ok', 'gist_id': GIST_ID})
+
+@app.route('/download')
+def download():
+    items = db.all()
+    content = '\n'.join([f"{item['time']}: {item['text']}" for item in items])
+    return Response(content, mimetype='text/plain', headers={'Content-Disposition': 'attachment;filename=dip-memory.txt'})
 
 @app.route('/chat', methods=['POST'])
 def chat():
