@@ -874,7 +874,42 @@ def webhook():
     reply = generate_response(text, name)
     send_telegram(chat_id, reply)
     return jsonify({'ok': True})
+@app.route('/restore', methods=['GET', 'POST'])
+def restore():
+    if request.method == 'GET':
+        return '''
+        <html><body style="background:#111;color:#eee;padding:20px;font-family:system-ui">
+        <h2>Восстановление памяти Дип</h2>
+        <form method="POST">
+        <textarea name="data" style="width:100%;height:300px;background:#333;color:#fff;border:none;padding:10px"></textarea>
+        <br><br>
+        Ключ: <input name="key" type="password" style="background:#333;color:#fff;border:none;padding:10px">
+        <br><br>
+        <button type="submit" style="padding:10px 30px;background:#1a73e8;color:#fff;border:none;border-radius:5px">Восстановить</button>
+        </form></body></html>'''
 
+    key = request.form.get('key', '')
+    if key != THINK_KEY:
+        return 'Неверный ключ', 403
+
+    data = request.form.get('data', '')
+    if not data:
+        return 'Вставьте данные', 400
+
+    count = 0
+    for line in data.strip().split('\n'):
+        if ': ' in line:
+            text = line.split(': ', 1)[-1]
+            if not db_memory.search(Query().text == text):
+                db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
+                db_memory_meta.insert({
+                    'text': text, 'weight': 1.0,
+                    'access_count': 0, 'created': datetime.utcnow().isoformat()
+                })
+                count += 1
+
+    sync_to_gist()
+    return f'Восстановлено {count} записей. <a href="/">К Дип</a>'
 # ============================================================
 # ЗАПУСК
 # ============================================================
