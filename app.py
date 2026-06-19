@@ -809,19 +809,20 @@ HTML = '''<!DOCTYPE html>
         #input { flex:1; padding:10px; border:none; border-radius:20px; background:#444; color:#fff; }
         #send { padding:10px 20px; border:none; border-radius:20px; background:#1a73e8; color:#fff; cursor:pointer; }
         #mic { padding:10px 15px; border:none; border-radius:20px; background:#e81a5f; color:#fff; cursor:pointer; font-size:18px; }
-        #mic.active { background:#0f0; }
+        #mic.recording { background:#0f0; }
     </style>
 </head>
 <body>
     <div id="chat"></div>
     <form id="form" onsubmit="sendMsg(event)">
         <input id="input" type="text" placeholder="Пиши..." autofocus>
-        <button id="mic" type="button" onclick="toggleMic()" title="Голос">🎤</button>
+        <button id="mic" type="button" title="Голос">🎤</button>
         <button id="send" type="submit">→</button>
     </form>
     <script>
-        var recognition = null;
-        var isListening = false;
+        var mediaRecorder = null;
+        var audioChunks = [];
+        var isRecording = false;
 
         function add(text, cls) {
             var d = document.createElement('div');
@@ -829,61 +830,46 @@ HTML = '''<!DOCTYPE html>
             d.textContent = text;
             document.getElementById('chat').appendChild(d);
             document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
-            speak(text);
         }
 
-        function speak(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                var u = new SpeechSynthesisUtterance(text);
-                u.lang = 'ru-RU';
-                u.rate = 1.0;
-                u.pitch = 1.0;
-                u.volume = 1.0;
-                var voices = window.speechSynthesis.getVoices();
-                var femaleVoice = voices.find(v => v.lang.startsWith('ru') && v.name.includes('Female')) || voices.find(v => v.lang.startsWith('ru'));
-                if (femaleVoice) u.voice = femaleVoice;
-                window.speechSynthesis.speak(u);
-            }
-        }
-
-        function toggleMic() {
-            if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-                alert('Голосовой ввод не поддерживается. Используйте Chrome.');
+        async function toggleMic() {
+            var micBtn = document.getElementById('mic');
+            if (isRecording) {
+                mediaRecorder.stop();
+                micBtn.classList.remove('recording');
+                isRecording = false;
                 return;
             }
-            if (!recognition) {
-                var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-                recognition = new SR();
-                recognition.lang = 'ru-RU';
-                recognition.interimResults = false;
-                recognition.continuous = false;
-                recognition.onresult = function(e) {
-                    var text = e.results[0][0].transcript;
-                    document.getElementById('input').value = text;
-                    document.getElementById('mic').classList.remove('active');
-                    isListening = false;
-                    sendMsg(new Event('submit'));
+            try {
+                var stream = await navigator.mediaDevices.getUserMedia({audio: true});
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+                mediaRecorder.ondataavailable = function(e) { audioChunks.push(e.data); };
+                mediaRecorder.onstop = async function() {
+                    var audioBlob = new Blob(audioChunks, {type: 'audio/webm'});
+                    var formData = new FormData();
+                    formData.append('audio', audioBlob, 'voice.webm');
+                    try {
+                        var r = await fetch('/voice', {method:'POST', body:formData});
+                        var d = await r.json();
+                        if (d.text) {
+                            document.getElementById('input').value = d.text;
+                            sendMsg(new Event('submit'));
+                        }
+                    } catch(err) {
+                        add('Ошибка распознавания...', 'dip');
+                    }
+                    stream.getTracks().forEach(t => t.stop());
                 };
-                recognition.onerror = function() {
-                    document.getElementById('mic').classList.remove('active');
-                    isListening = false;
-                };
-                recognition.onend = function() {
-                    document.getElementById('mic').classList.remove('active');
-                    isListening = false;
-                };
-            }
-            if (isListening) {
-                recognition.stop();
-                document.getElementById('mic').classList.remove('active');
-                isListening = false;
-            } else {
-                recognition.start();
-                document.getElementById('mic').classList.add('active');
-                isListening = true;
+                mediaRecorder.start();
+                micBtn.classList.add('recording');
+                isRecording = true;
+            } catch(err) {
+                alert('Нет доступа к микрофону. Проверьте настройки браузера.');
             }
         }
+
+        document.getElementById('mic').onclick = toggleMic;
 
         async function sendMsg(e) {
             e.preventDefault();
@@ -900,8 +886,6 @@ HTML = '''<!DOCTYPE html>
                 add('Ошибка связи...', 'dip');
             }
         }
-
-        window.speechSynthesis.onvoiceschanged = function() {};
     </script>
 </body>
 </html>'''
