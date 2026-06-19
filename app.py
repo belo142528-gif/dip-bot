@@ -545,10 +545,13 @@ def breathe():
     do_evolution = (breath_count > 0 and breath_count % EVOLUTION_BREATHS == 0)
     do_auto_evolution = (breath_count > 0 and breath_count % EVOLUTION_BREATHS == 0
                          and len(get_current_modules()) < MAX_MODULES)
-                if 0 <= idx < len(recent):
-                boost_memory_weight(recent[idx]['text'], delta=0.6)
-        save_reflection(f'Консолидация: важные воспоминания {parsed["important"]}')
-
+    if parsed['important']:
+    all_memories = db_memory.all()
+    recent = all_memories[-30:]
+    for idx in parsed['important']:
+        if 0 <= idx < len(recent):
+            boost_memory_weight(recent[idx]['text'], delta=0.6)
+    save_reflection(f'Консолидация: важные воспоминания {parsed["important"]}')
     if parsed['new_goal']:
         update_state(current_goal=parsed['new_goal'])
         save_reflection(f'Эволюция: новая цель — {parsed["new_goal"]}')
