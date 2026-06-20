@@ -240,6 +240,7 @@ def update_state(**kwargs):
     current = get_state()
     current.update(kwargs)
     current['time'] = datetime.utcnow().isoformat()
+    db_state.truncate()
     db_state.insert(current)
 
 def decay_needs():
