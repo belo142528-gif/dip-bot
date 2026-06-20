@@ -937,6 +937,10 @@ def chat():
     user_text = data.get('message', '')
     reply = generate_response(user_text, 'Папа')
     return jsonify({'reply': reply})
+@app.route('/voice', methods=['POST'])
+def voice():
+    return jsonify({'text': ''})
+    
 
 @app.route('/breathe')
 def trigger_breathe():
