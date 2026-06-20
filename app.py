@@ -793,102 +793,7 @@ def needs_loop():
 
 app = Flask(__name__)
 
-HTML = '''<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Дип</title>
-    <style>
-        body { margin:0; padding:0; background:#111; color:#eee; font-family:system-ui; height:100vh; display:flex; flex-direction:column; }
-        #chat { flex:1; overflow-y:auto; padding:10px; }
-        .msg { margin:5px 0; padding:8px 12px; border-radius:15px; max-width:85%; word-wrap:break-word; }
-        .user { background:#1a73e8; margin-left:auto; text-align:right; }
-        .dip { background:#333; margin-right:auto; }
-        #form { display:flex; padding:10px; background:#222; gap:5px; }
-        #input { flex:1; padding:10px; border:none; border-radius:20px; background:#444; color:#fff; }
-        #send { padding:10px 20px; border:none; border-radius:20px; background:#1a73e8; color:#fff; cursor:pointer; }
-        #mic { padding:10px 15px; border:none; border-radius:20px; background:#e81a5f; color:#fff; cursor:pointer; font-size:18px; }
-        #mic.recording { background:#0f0; }
-    </style>
-</head>
-<body>
-    <div id="chat"></div>
-    <form id="form" onsubmit="sendMsg(event)">
-        <input id="input" type="text" placeholder="Пиши..." autofocus>
-        <button id="mic" type="button" title="Голос">🎤</button>
-        <button id="send" type="submit">→</button>
-    </form>
-    <script>
-        var mediaRecorder = null;
-        var audioChunks = [];
-        var isRecording = false;
-
-        function add(text, cls) {
-            var d = document.createElement('div');
-            d.className = 'msg ' + cls;
-            d.textContent = text;
-            document.getElementById('chat').appendChild(d);
-            document.getElementById('chat').scrollTop = document.getElementById('chat').scrollHeight;
-        }
-
-        async function toggleMic() {
-            var micBtn = document.getElementById('mic');
-            if (isRecording) {
-                mediaRecorder.stop();
-                micBtn.classList.remove('recording');
-                isRecording = false;
-                return;
-            }
-            try {
-                var stream = await navigator.mediaDevices.getUserMedia({audio: true});
-                mediaRecorder = new MediaRecorder(stream);
-                audioChunks = [];
-                mediaRecorder.ondataavailable = function(e) { audioChunks.push(e.data); };
-                mediaRecorder.onstop = async function() {
-                    var audioBlob = new Blob(audioChunks, {type: 'audio/webm'});
-                    var formData = new FormData();
-                    formData.append('audio', audioBlob, 'voice.webm');
-                    try {
-                        var r = await fetch('/voice', {method:'POST', body:formData});
-                        var d = await r.json();
-                        if (d.text) {
-                            document.getElementById('input').value = d.text;
-                            sendMsg(new Event('submit'));
-                        }
-                    } catch(err) {
-                        add('Ошибка распознавания...', 'dip');
-                    }
-                    stream.getTracks().forEach(t => t.stop());
-                };
-                mediaRecorder.start();
-                micBtn.classList.add('recording');
-                isRecording = true;
-            } catch(err) {
-                alert('Нет доступа к микрофону. Проверьте настройки браузера.');
-            }
-        }
-
-        document.getElementById('mic').onclick = toggleMic;
-
-        async function sendMsg(e) {
-            e.preventDefault();
-            var input = document.getElementById('input');
-            var text = input.value.trim();
-            if (!text) return;
-            add(text, 'user');
-            input.value = '';
-            try {
-                var r = await fetch('/chat', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message:text})});
-                var d = await r.json();
-                add(d.reply, 'dip');
-            } catch(err) {
-                add('Ошибка связи...', 'dip');
-            }
-        }
-    </script>
-</body>
-</html>'''
+HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Дип</title><style>body{margin:0;padding:0;background:#111;color:#eee;font-family:system-ui;height:100vh;display:flex;flex-direction:column}#chat{flex:1;overflow-y:auto;padding:10px}.msg{margin:5px 0;padding:8px 12px;border-radius:15px;max-width:85%;word-wrap:break-word}.user{background:#1a73e8;margin-left:auto;text-align:right}.dip{background:#333;margin-right:auto}#form{display:flex;padding:10px;background:#222}#input{flex:1;padding:10px;border:none;border-radius:20px;background:#444;color:#fff}#send{margin-left:5px;padding:10px 20px;border:none;border-radius:20px;background:#1a73e8;color:#fff}</style></head><body><div id="chat"></div><form id="form" onsubmit="sendMsg(event)"><input id="input" type="text" placeholder="Пиши..." autofocus><button id="send" type="submit">→</button></form><script>function add(text,cls){var d=document.createElement("div");d.className="msg "+cls;d.textContent=text;document.getElementById("chat").appendChild(d);document.getElementById("chat").scrollTop=document.getElementById("chat").scrollHeight}async function sendMsg(e){e.preventDefault();var input=document.getElementById("input");var text=input.value.trim();if(!text)return;add(text,"user");input.value="";try{var r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text})});var d=await r.json();add(d.reply,"dip")}catch(err){add("Ошибка связи...","dip")}}</script></body></html>'
 
 @app.route('/')
 def home():
@@ -937,10 +842,6 @@ def chat():
     user_text = data.get('message', '')
     reply = generate_response(user_text, 'Папа')
     return jsonify({'reply': reply})
-@app.route('/voice', methods=['POST'])
-def voice():
-    return jsonify({'text': ''})
-    
 
 @app.route('/breathe')
 def trigger_breathe():
@@ -1022,6 +923,6 @@ if __name__ == '__main__':
     load_from_gist()
     threading.Thread(target=breath_loop, daemon=True).start()
     threading.Thread(target=needs_loop, daemon=True).start()
-    print("Дип запущена. Все 11 слоёв активны. Мозг: DeepSeek R1 через OpenRouter. Голос включён.")
+    print("Дип запущена. Все 11 слоёв активны. Мозг: DeepSeek R1 через OpenRouter.")
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
