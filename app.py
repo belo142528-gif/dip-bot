@@ -626,7 +626,7 @@ def breathe():
         'РЕФЛЕКСИЯ: [глубокая мысль о себе, 2-3 предложения]',
     ])
 
-    response = ask(prompt, temperature=0.95, max_tokens=1200, use_search=True)
+    response = ask(prompt, temperature=0.95, max_tokens=800, use_search=True)
 
     parsed = {
         'thought': '', 'reflection': '', 'important': [],
