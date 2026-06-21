@@ -473,42 +473,6 @@ def validate_module_code(code):
             return False, f'Запрещённый импорт: {imp}', None
 
     return True, 'OK', code
-    try:
-        ast.parse(code)
-    except SyntaxError as e:
-        return False, f'Ошибка синтаксиса: {e}', None
-
-    code_lower = code.lower()
-
-    dangerous_calls = [
-        'os.system', 'subprocess', 'shutil', 'eval(', 'exec(', 'compile(',
-        '__import__', 'os.remove', 'os.rmdir', 'os.unlink',
-        'base64', 'codecs.decode', 'codecs.encode',
-        'getattr(', 'setattr(', 'delattr(',
-        'pickle', 'marshal', 'ctypes',
-        'socket', 'http.client', 'urllib', 'ftplib', 'telnetlib', 'smtplib',
-    ]
-    for d in dangerous_calls:
-        if d in code_lower:
-            if d == 'open(' and ("'r'" in code_lower or '"r"' in code_lower):
-                continue
-            return False, f'Обнаружен опасный вызов: {d}', None
-
-    dangerous_imports = [
-        'import os', 'import sys', 'import subprocess', 'import shutil',
-        'from os', 'from sys', 'from subprocess', 'from shutil',
-        'import base64', 'from base64', 'import codecs', 'from codecs',
-        'import pickle', 'from pickle', 'import marshal', 'from marshal',
-        'import ctypes', 'from ctypes', 'import socket', 'from socket',
-        'import http', 'from http', 'import urllib', 'from urllib',
-        'import ftplib', 'import telnetlib', 'import smtplib',
-        'import builtins', 'from builtins', 'import __builtins__',
-    ]
-    for imp in dangerous_imports:
-        if imp in code_lower:
-            return False, f'Запрещённый импорт: {imp}', None
-
-    return True, 'OK', code
 
 def save_module(module_name, code):
     ensure_modules_dir()
