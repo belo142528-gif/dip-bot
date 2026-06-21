@@ -523,7 +523,6 @@ def save_module(module_name, code):
         return False, f'Ошибка загрузки: {str(e)[:200]}', []
 
 def get_modules_info():
-def get_modules_info():
     modules = get_current_modules()
     if not modules:
         return 'У меня пока нет собственных модулей. Но я могу их создать в любой момент.'
