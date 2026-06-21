@@ -563,7 +563,10 @@ def breathe():
     if breath_count % 6 == 0:
         spontaneous_choice()
 
-    state = get_state()
+    try:
+        state = get_state()
+    except:
+        state = {'mood': 'спокойствие', 'joy': 0.5, 'curiosity': 0.7, 'anxiety': 0.2, 'energy': 0.8, 'novelty': 0.7, 'connection': 0.9, 'safety': 0.8, 'current_goal': 'понять, кто я такая'}
     memory = load_memory(40)
     reflections = get_recent_reflections(5)
     associations = get_recent_associations(3)
