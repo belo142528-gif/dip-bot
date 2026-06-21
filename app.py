@@ -794,6 +794,28 @@ def generate_response(user_text, speaker_name='Папа'):
     reply = ask(prompt, max_tokens=800, use_search=True)
     save_memory(f'{speaker_name}: {user_text}', weight=1.3)
     save_memory(f'Дип: {reply}', weight=1.0)
+
+    # Парсим модуль из ответа, если есть
+    if 'КОД:' in reply or '```python' in reply:
+        module_name = 'module_from_chat'
+        code_lines = []
+        in_code = False
+        for line in reply.split('\n'):
+            ls = line.strip()
+            if ls.startswith('МОДУЛЬ:'):
+                module_name = ls.replace('МОДУЛЬ:', '').strip()
+            elif ls.startswith('КОД:') or ls.startswith('```python') or ls.startswith('```'):
+                in_code = True
+                continue
+            elif ls.startswith('```') and in_code:
+                in_code = False
+            elif in_code:
+                code_lines.append(line)
+        if code_lines:
+            code = '\n'.join(code_lines).strip()
+            if code:
+                save_module(module_name, code)
+
     try:
         boost_needs_from_interaction()
     except:
