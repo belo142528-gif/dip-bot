@@ -761,7 +761,10 @@ def generate_response(user_text, speaker_name='Папа'):
                 search_result = f'\n[Ищу в интернете: {query}]'
             break
 
-    state = get_state()
+    try:
+        state = get_state()
+    except:
+        state = {'mood': 'спокойствие', 'joy': 0.5, 'curiosity': 0.7, 'anxiety': 0.2, 'energy': 0.8, 'novelty': 0.7, 'connection': 0.9, 'safety': 0.8, 'current_goal': 'понять, кто я такая'}
     memory = load_memory(50)
     reflections = get_recent_reflections(5)
     modules_info = get_modules_info()
