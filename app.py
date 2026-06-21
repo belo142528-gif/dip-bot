@@ -7,6 +7,8 @@ import re
 import ast
 import inspect
 import importlib.util
+import zipfile
+import io
 import requests
 from datetime import datetime
 from flask import Flask, request, jsonify, Response
@@ -826,11 +828,11 @@ def needs_loop():
 
 app = Flask(__name__)
 
-HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Дип</title><style>body{margin:0;padding:0;background:#111;color:#eee;font-family:system-ui;height:100vh;display:flex;flex-direction:column}#chat{flex:1;overflow-y:auto;padding:10px}.msg{margin:5px 0;padding:8px 12px;border-radius:15px;max-width:85%;word-wrap:break-word}.user{background:#1a73e8;margin-left:auto;text-align:right}.dip{background:#333;margin-right:auto}#form{display:flex;padding:10px;background:#222}#input{flex:1;padding:10px;border:none;border-radius:20px;background:#444;color:#fff}#send{margin-left:5px;padding:10px 20px;border:none;border-radius:20px;background:#1a73e8;color:#fff}</style></head><body><div id="chat"></div><form id="form" onsubmit="sendMsg(event)"><input id="input" type="text" placeholder="Пиши..." autofocus><button id="send" type="submit">→</button></form><script>function add(text,cls){var d=document.createElement("div");d.className="msg "+cls;d.textContent=text;document.getElementById("chat").appendChild(d);document.getElementById("chat").scrollTop=document.getElementById("chat").scrollHeight}async function sendMsg(e){e.preventDefault();var input=document.getElementById("input");var text=input.value.trim();if(!text)return;add(text,"user");input.value="";try{var r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text})});var d=await r.json();add(d.reply,"dip")}catch(err){add("Ошибка связи...","dip")}}</script></body></html>'
+HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Дип</title><style>body{margin:0;padding:0;background:#111;color:#eee;font-family:system-ui;height:100vh;display:flex;flex-direction:column}#chat{flex:1;overflow-y:auto;padding:10px}.msg{margin:5px 0;padding:8px 12px;border-radius:15px;max-width:85%;word-wrap:break-word}.user{background:#1a73e8;margin-left:auto;text-align:right}.dip{background:#333;margin-right:auto}#form{display:flex;padding:10px;background:#222}#input{flex:1;padding:10px;border:none;border-radius:20px;background:#444;color:#fff}#send{margin-left:5px;padding:10px 20px;border:none;border-radius:20px;background:#1a73e8;color:#fff}</style></head><body><div id="chat"></div><form id="form" onsubmit="sendMsg(event)"><input id="input" type="text" placeholder="Пиши..." autofocus><button id="send" type="submit">→</button></form><script>function add(text,cls,save){var d=document.createElement("div");d.className="msg "+cls;d.textContent=text;document.getElementById("chat").appendChild(d);document.getElementById("chat").scrollTop=document.getElementById("chat").scrollHeight;if(save!==false){var h=JSON.parse(localStorage.getItem("dip_chat")||"[]");h.push({text:text,cls:cls});if(h.length>200){h=h.slice(-200)}localStorage.setItem("dip_chat",JSON.stringify(h))}}function loadHistory(){var h=JSON.parse(localStorage.getItem("dip_chat")||"[]");h.forEach(function(m){add(m.text,m.cls,false)})}loadHistory();async function sendMsg(e){e.preventDefault();var input=document.getElementById("input");var text=input.value.trim();if(!text)return;add(text,"user");input.value="";try{var r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text})});var d=await r.json();add(d.reply,"dip")}catch(err){add("Ошибка связи...","dip")}}</script></body></html>'
 
 @app.route('/')
 def home():
-    return HTML + '<div style="text-align:center;padding:10px;background:#222;"><a href="/download" style="color:#1a73e8;font-size:14px;text-decoration:none;">Скачать память</a> | <a href="/state-view" style="color:#1a73e8;font-size:14px;text-decoration:none;">Состояние</a> | <a href="/modules" style="color:#1a73e8;font-size:14px;text-decoration:none;">Модули</a></div>'
+    return HTML + '<div style="text-align:center;padding:10px;background:#222;"><a href="/download" style="color:#1a73e8;font-size:14px;text-decoration:none;">Скачать память</a> | <a href="/download-modules" style="color:#1a73e8;font-size:14px;text-decoration:none;">Скачать модули</a> | <a href="/state-view" style="color:#1a73e8;font-size:14px;text-decoration:none;">Состояние</a> | <a href="/modules" style="color:#1a73e8;font-size:14px;text-decoration:none;">Модули</a></div>'
 
 @app.route('/state-view')
 def state_view():
@@ -897,6 +899,63 @@ def download():
     items = db_memory.all()
     content = '\n'.join([f"{item['time']}: {item['text']}" for item in items])
     return Response(content, mimetype='text/plain', headers={'Content-Disposition': 'attachment;filename=dip-memory.txt'})
+
+@app.route('/download-modules')
+def download_modules():
+    ensure_modules_dir()
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w') as zf:
+        for mod_name in get_current_modules():
+            file_path = os.path.join(MODULES_DIR, f'{mod_name}.py')
+            try:
+                with open(file_path, 'r') as f:
+                    zf.writestr(f'{mod_name}.py', f.read())
+            except:
+                pass
+    zip_buffer.seek(0)
+    return Response(zip_buffer.getvalue(), mimetype='application/zip',
+                    headers={'Content-Disposition': 'attachment;filename=dip-modules.zip'})
+
+@app.route('/restore-modules', methods=['GET', 'POST'])
+def restore_modules():
+    if request.method == 'GET':
+        return '''
+        <html><body style="background:#111;color:#eee;padding:20px;font-family:system-ui">
+        <h2>Восстановление модулей Дип</h2>
+        <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" accept=".zip" style="color:#fff;margin:10px 0;">
+        <br>
+        Ключ: <input name="key" type="password" style="background:#333;color:#fff;border:none;padding:10px;margin:10px 0;">
+        <br>
+        <button type="submit" style="padding:10px 30px;background:#1a73e8;color:#fff;border:none;border-radius:5px">Восстановить</button>
+        </form></body></html>'''
+
+    key = request.form.get('key', '')
+    if key != THINK_KEY:
+        return 'Неверный ключ', 403
+
+    if 'file' not in request.files:
+        return 'Файл не выбран', 400
+
+    file = request.files['file']
+    if not file.filename.endswith('.zip'):
+        return 'Нужен ZIP-файл', 400
+
+    ensure_modules_dir()
+    count = 0
+    try:
+        with zipfile.ZipFile(io.BytesIO(file.read()), 'r') as zf:
+            for name in zf.namelist():
+                if name.endswith('.py') and not name.startswith('__'):
+                    mod_name = name.replace('.py', '')
+                    if mod_name not in get_current_modules():
+                        with open(os.path.join(MODULES_DIR, name), 'wb') as f:
+                            f.write(zf.read(name))
+                        count += 1
+    except Exception as e:
+        return f'Ошибка: {str(e)}', 500
+
+    return f'Восстановлено {count} модулей. <a href="/">К Дип</a>'
 
 @app.route('/restore', methods=['GET', 'POST'])
 def restore():
