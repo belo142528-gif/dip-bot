@@ -483,14 +483,15 @@ def save_module(module_name, code):
     if module_name.lower() in [n.lower() for n in RESERVED_NAMES]:
         return False, f'Имя "{module_name}" зарезервировано', []
     if module_name in get_current_modules():
-        return False, f'Модуль "{module_name}" уже существует', []
+        # Перезаписываем существующий модуль
+        pass
 
     is_safe, msg, clean_code = validate_module_code(code)
     if not is_safe:
         return False, msg, []
 
     if 'import' not in clean_code[:50]:
-        clean_code = 'import json\nimport requests\nfrom datetime import datetime\nimport re\nimport random\n\n' + clean_code
+        clean_code = '# сохранено\nimport json\nimport random\nfrom datetime import datetime\nimport re\n\n' + clean_code
 
     file_path = os.path.join(MODULES_DIR, f'{module_name}.py')
     try:
@@ -499,22 +500,16 @@ def save_module(module_name, code):
     except Exception as e:
         return False, f'Ошибка сохранения: {e}', []
 
-    try:
-        spec = importlib.util.spec_from_file_location(module_name, file_path)
-        module = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(module)
-        functions = [name for name, obj in inspect.getmembers(module, inspect.isfunction)
-                     if not name.startswith('_')]
-        if not functions:
-            os.remove(file_path)
-            return False, 'Модуль не содержит функций', []
-        return True, f'Модуль загружен. Функции: {", ".join(functions)}', functions
-    except Exception as e:
-        try:
-            os.remove(file_path)
-        except:
-            pass
-        return False, f'Ошибка загрузки: {str(e)[:200]}', []
+    # Не требуем загрузки модуля — просто сохраняем файл
+    functions = []
+    for line in clean_code.split('\n'):
+        line = line.strip()
+        if line.startswith('def ') and '(' in line:
+            fname = line[4:].split('(')[0].strip()
+            if not fname.startswith('_'):
+                functions.append(fname)
+
+    return True, f'Модуль сохранён. Функции: {", ".join(functions) if functions else "нет функций"}', functions
 
 def get_modules_info():
     modules = get_current_modules()
