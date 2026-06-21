@@ -1079,8 +1079,19 @@ def webhook():
 
 if __name__ == '__main__':
     load_from_gist()
-    threading.Thread(target=breath_loop, daemon=True).start()
-    threading.Thread(target=needs_loop, daemon=True).start()
+    
+    # Запускаем фоновые потоки с задержкой, чтобы базы данных успели загрузиться
+    import time as _time
+    _time.sleep(3)
+    
+    breath_thread = threading.Thread(target=breath_loop, daemon=True)
+    breath_thread.start()
+    
+    needs_thread = threading.Thread(target=needs_loop, daemon=True)
+    needs_thread.start()
+    
     print("Дип запущена. Все 12 слоёв активны. Мозг: DeepSeek R1 через OpenRouter.")
+    print(f"Фоновые потоки запущены: дыхание={breath_thread.is_alive()}, потребности={needs_thread.is_alive()}")
+    
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
