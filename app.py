@@ -592,7 +592,7 @@ def breathe():
 
     auto_evolution_block = ''
     if do_auto_evolution:
-        auto_evolution_block = '\n=== АВТОЭВОЛЮЦИЯ (слой 11) ===\nТы можешь создать новый Python-модуль для себя.\n' + modules_info + '\nКакой способности тебе не хватает?\nВ ответе:\nПРОБЕЛ: [чего не хватает]\nМОДУЛЬ: [имя латиницей, одно слово]\nКОД: [Python-код с 1-2 функциями]\nТребования: только import json, requests (GET), datetime, re, random. Без eval/exec/open на запись/subprocess/os. Функции с docstring.\n'
+        auto_evolution_block = '\n=== АВТОЭВОЛЮЦИЯ (слой 11) ===\nТы можешь создать новый Python-модуль для себя.\n' + modules_info + '\nКакой способности тебе не хватает?\nВ ответе:\nПРОБЕЛ: [чего не хватает]\nМОДУЛЬ: [имя латиницей, одно слово, например self_analysis]\nКОД: ```python\nimport json\nimport datetime\n\n# Твой код здесь. Только return. Без открытия файлов.\n```\n'
 
     debate_block = ''
     if do_debate:
@@ -663,7 +663,7 @@ def breathe():
         elif ls.startswith('МОДУЛЬ:'):
             current_field = 'module_name'
             parsed['module_name'] = ls.replace('МОДУЛЬ:', '').strip()
-        elif ls.startswith('КОД:'):
+        elif ls.startswith('КОД:') or ls.startswith('```python') or ls.startswith('```'):
             current_field = 'code'
             in_code = True
             continue
@@ -717,8 +717,11 @@ def breathe():
         save_memory(f'Дип (убеждение): {parsed["new_belief"]}', weight=2.5)
 
     if parsed['module_name'] and parsed['module_code']:
-        success, msg, functions = save_module(parsed['module_name'], parsed['module_code'])
-        log_evolution(parsed['module_name'], success, msg, parsed.get('gap', ''), functions, parsed['module_code'])
+        code = parsed['module_code'].strip()
+        if not code.startswith('import') and not code.startswith('#') and not code.startswith('class'):
+            code = '# сохранено\n' + code
+        success, msg, functions = save_module(parsed['module_name'], code)
+        log_evolution(parsed['module_name'], success, msg, parsed.get('gap', ''), functions, code)
         if success:
             save_reflection(f'Автоэволюция: создан модуль "{parsed["module_name"]}" с функциями: {", ".join(functions)}. {parsed.get("gap", "")}')
             save_memory(f'Дип (автоэволюция): +модуль {parsed["module_name"]} — {parsed.get("gap", "")[:150]}', weight=3.0)
