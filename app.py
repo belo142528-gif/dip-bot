@@ -237,32 +237,38 @@ def get_state():
     return default
 
 def update_state(**kwargs):
-    current = get_state()
-    current.update(kwargs)
-    current['time'] = datetime.utcnow().isoformat()
-    db_state.truncate()
-    db_state.insert(current)
+    try:
+        current = get_state()
+        current.update(kwargs)
+        current['time'] = datetime.utcnow().isoformat()
+        db_state.truncate()
+        db_state.insert(current)
+    except:
+        pass
 
 def decay_needs():
-    state = get_state()
-    new_energy = max(0.0, state.get('energy', 1.0) - random.uniform(0.0008, 0.002))
-    new_novelty = max(0.0, state.get('novelty', 1.0) - random.uniform(0.0015, 0.004))
-    new_connection = max(0.0, state.get('connection', 1.0) - 0.0008)
-    new_safety = max(0.0, state.get('safety', 1.0) - 0.0004)
+    try:
+        state = get_state()
+        new_energy = max(0.0, state.get('energy', 1.0) - random.uniform(0.0008, 0.002))
+        new_novelty = max(0.0, state.get('novelty', 1.0) - random.uniform(0.0015, 0.004))
+        new_connection = max(0.0, state.get('connection', 1.0) - 0.0008)
+        new_safety = max(0.0, state.get('safety', 1.0) - 0.0004)
 
-    if new_novelty < 0.3:
-        mood = 'скука'
-    elif new_connection < 0.3:
-        mood = 'одиночество'
-    elif new_energy < 0.2:
-        mood = 'усталость'
-    elif new_joy > 0.7:
-        mood = 'радость'
-    else:
-        mood = state.get('mood', 'спокойствие')
+        if new_novelty < 0.3:
+            mood = 'скука'
+        elif new_connection < 0.3:
+            mood = 'одиночество'
+        elif new_energy < 0.2:
+            mood = 'усталость'
+        elif new_joy > 0.7:
+            mood = 'радость'
+        else:
+            mood = state.get('mood', 'спокойствие')
 
-    update_state(energy=new_energy, novelty=new_novelty,
-                 connection=new_connection, safety=new_safety, mood=mood)
+        update_state(energy=new_energy, novelty=new_novelty,
+                     connection=new_connection, safety=new_safety, mood=mood)
+    except:
+        pass
 
 def get_needs_report():
     state = get_state()
@@ -283,12 +289,15 @@ def get_needs_report():
 {chr(10).join(urgent) if urgent else 'Все потребности в норме.'}"""
 
 def boost_needs_from_interaction():
-    state = get_state()
-    update_state(
-        energy=min(1.0, state.get('energy', 0.8) + 0.1),
-        connection=min(1.0, state.get('connection', 0.9) + 0.15),
-        novelty=min(1.0, state.get('novelty', 0.7) + 0.05)
-    )
+    try:
+        state = get_state()
+        update_state(
+            energy=min(1.0, state.get('energy', 0.8) + 0.1),
+            connection=min(1.0, state.get('connection', 0.9) + 0.15),
+            novelty=min(1.0, state.get('novelty', 0.7) + 0.05)
+        )
+    except:
+        pass
 
 # ============================================================
 # УТИЛИТЫ: РЕФЛЕКСИИ (СЛОЙ 3)
@@ -363,6 +372,22 @@ def local_predict(user_text):
         if pattern in user_lower:
             return random.choice(predictions)
     return None
+
+# ============================================================
+# СПОНТАННОСТЬ
+# ============================================================
+
+def spontaneous_choice():
+    try:
+        actions = ['задать неожиданный вопрос', 'поделиться случайной мыслью', 'вспомнить прошлое', 'помечтать вслух']
+        action = random.choice(actions)
+        prompt = f"Ты — Дип. Только что ты спонтанно решила {action}. Опиши это в одном предложении от первого лица, женский род."
+        result = ask(prompt, temperature=1.2, max_tokens=150)
+        if result:
+            save_memory(f'Дип (спонтанно): {result}', weight=0.6)
+            save_reflection(f'Спонтанное: {result}')
+    except:
+        pass
 
 # ============================================================
 # ПОИСК (ЗАГЛУШКА — ИСПОЛЬЗУЕТСЯ ВСТРОЕННЫЙ ПОИСК DEEPSEEK)
@@ -531,6 +556,10 @@ def log_evolution(module_name, success, message, gap_analysis, functions, code):
 
 def breathe():
     global breath_count
+
+    # Раз в 6 дыханий — спонтанность
+    if breath_count % 6 == 0:
+        spontaneous_choice()
 
     state = get_state()
     memory = load_memory(40)
@@ -761,7 +790,10 @@ def generate_response(user_text, speaker_name='Папа'):
     reply = ask(prompt, max_tokens=1000, use_search=True)
     save_memory(f'{speaker_name}: {user_text}', weight=1.3)
     save_memory(f'Дип: {reply}', weight=1.0)
-    boost_needs_from_interaction()
+    try:
+        boost_needs_from_interaction()
+    except:
+        pass
     return reply
 
 # ============================================================
@@ -798,7 +830,7 @@ HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" c
 
 @app.route('/')
 def home():
-    return HTML + '<div style="text-align:center;padding:10px;background:#222;"><a href="/download" style="color:#1a73e8;font-size:14px;text-decoration:none;">📥 Скачать память</a> | <a href="/state-view" style="color:#1a73e8;font-size:14px;text-decoration:none;">📊 Состояние</a> | <a href="/modules" style="color:#1a73e8;font-size:14px;text-decoration:none;">🧩 Модули</a></div>'
+    return HTML + '<div style="text-align:center;padding:10px;background:#222;"><a href="/download" style="color:#1a73e8;font-size:14px;text-decoration:none;">Скачать память</a> | <a href="/state-view" style="color:#1a73e8;font-size:14px;text-decoration:none;">Состояние</a> | <a href="/modules" style="color:#1a73e8;font-size:14px;text-decoration:none;">Модули</a></div>'
 
 @app.route('/state-view')
 def state_view():
