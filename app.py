@@ -523,6 +523,7 @@ def save_module(module_name, code):
         return False, f'Ошибка загрузки: {str(e)[:200]}', []
 
 def get_modules_info():
+def get_modules_info():
     modules = get_current_modules()
     if not modules:
         return 'У меня пока нет собственных модулей. Но я могу их создать в любой момент.'
@@ -532,10 +533,14 @@ def get_modules_info():
         try:
             with open(file_path, 'r') as f:
                 code = f.read()
-            funcs = re.findall(r'def (\w+)\([^)]*\):\s*"""([^"]*)"""', code)
+            funcs = []
+            for line in code.split('\n'):
+                line = line.strip()
+                if line.startswith('def ') and '(' in line:
+                    fname = line[4:].split('(')[0].strip()
+                    funcs.append(fname)
             if funcs:
-                for fname, doc in funcs:
-                    info += f'  • {mod_name}.{fname}() — {doc[:120]}\n'
+                info += f'  • {mod_name}.' + ', '.join(funcs) + '\n'
             else:
                 info += f'  • {mod_name} (без описания)\n'
         except:
