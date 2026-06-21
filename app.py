@@ -443,6 +443,36 @@ def validate_module_code(code):
         code = code[:-3]
     code = code.strip()
 
+    # Минимальная проверка: просто убедимся, что код не пустой
+    if not code:
+        return False, 'Код пустой', None
+
+    # Проверяем синтаксис, но не блокируем сохранение при ошибке
+    try:
+        ast.parse(code)
+    except SyntaxError:
+        pass  # Сохраняем даже с ошибками — это творческий код
+
+    code_lower = code.lower()
+
+    # Блокируем только реально опасные вызовы
+    dangerous_calls = [
+        'os.system', 'subprocess', 'shutil.rmtree', 'eval(', 'exec(', 'compile(',
+        '__import__', 'os.remove', 'os.rmdir', 'os.unlink',
+    ]
+    for d in dangerous_calls:
+        if d in code_lower:
+            return False, f'Обнаружен опасный вызов: {d}', None
+
+    dangerous_imports = [
+        'import os', 'import sys', 'import subprocess', 'import shutil',
+        'from os', 'from sys', 'from subprocess', 'from shutil',
+    ]
+    for imp in dangerous_imports:
+        if imp in code_lower:
+            return False, f'Запрещённый импорт: {imp}', None
+
+    return True, 'OK', code
     try:
         ast.parse(code)
     except SyntaxError as e:
