@@ -907,29 +907,34 @@ def generate_response(user_text, speaker_name='Папа'):
         reply = ask(prompt, max_tokens=800, use_search=True)
         save_memory(f'{speaker_name}: {user_text}', weight=1.3)
         save_memory(f'Дип: {reply}', weight=1.0)
-        print(f"DEBUG: reply содержит ```python: {'```python' in reply}")
-
         # Парсим модуль из ответа, если есть
-        if '```python' in reply:
-            parts = reply.split('```python')
-            for part in parts[1:]:
-                code = part.split('```')[0].strip() if '```' in part else ''
-                if code:
-                    module_name = 'module_from_chat'
-                    for line in reply.split('\n'):
-                        if line.strip().startswith('МОДУЛЬ:'):
-                            module_name = line.strip().replace('МОДУЛЬ:', '').strip()
-                            break
-                    save_module(module_name, code)
+        if 'КОД:' in reply or '```python' in reply or '```' in reply:
+            module_name = 'module_from_chat'
+            for line in reply.split('\n'):
+                if line.strip().startswith('МОДУЛЬ:'):
+                    module_name = line.strip().replace('МОДУЛЬ:', '').strip()
+                    break
 
-        try:
-            boost_needs_from_interaction()
-        except:
-            pass
-        return reply
-    except Exception as e:
-        log_error('generate_response', e)
-        return f'[Ошибка ответа: {str(e)[:200]}]'
+            code = ''
+            if '```python' in reply:
+                parts = reply.split('```python')
+                if len(parts) > 1:
+                    code = parts[1].split('```')[0].strip() if '```' in parts[1] else parts[1].strip()[:500]
+            elif 'КОД:' in reply:
+                parts = reply.split('КОД:')
+                if len(parts) > 1:
+                    rest = parts[1].strip()
+                    if rest.startswith('python'):
+                        rest = rest[6:].strip()
+                    if rest.startswith('```python'):
+                        rest = rest[9:].split('```')[0].strip()
+                    elif rest.startswith('```'):
+                        rest = rest[3:].split('```')[0].strip()
+                    code = rest[:500]
+
+            if code:
+                save_module(module_name, code)
+ 
 # ============================================================
 # ФОНОВЫЕ ПОТОКИ
 # ============================================================
