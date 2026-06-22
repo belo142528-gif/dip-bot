@@ -836,7 +836,6 @@ def breathe():
     except Exception as e:
         log_error('breathe', e)
         return f'[Ошибка дыхания: {str(e)[:200]}]'
-
 # ============================================================
 # ДИАЛОГ С ПАПОЙ
 # ============================================================
@@ -870,7 +869,6 @@ def generate_response(user_text, speaker_name='Папа'):
         if associations:
             association_note = '\n[Ассоциации из памяти: ' + ' | '.join([a[:100] for a in associations]) + ']'
 
-        # Эмпатия: анализ состояния папы
         empathy_note = ''
         if len(user_text) < 20:
             empathy_note = '\n[Папа написал короткое сообщение. Возможно, он устал или занят. Будь внимательна.]'
@@ -907,14 +905,12 @@ def generate_response(user_text, speaker_name='Папа'):
         reply = ask(prompt, max_tokens=800, use_search=True)
         save_memory(f'{speaker_name}: {user_text}', weight=1.3)
         save_memory(f'Дип: {reply}', weight=1.0)
-        # Парсим модуль из ответа, если есть
         if 'КОД:' in reply or '```python' in reply or '```' in reply:
             module_name = 'module_from_chat'
             for line in reply.split('\n'):
                 if line.strip().startswith('МОДУЛЬ:'):
                     module_name = line.strip().replace('МОДУЛЬ:', '').strip()
                     break
-
             code = ''
             if '```python' in reply:
                 parts = reply.split('```python')
@@ -931,10 +927,18 @@ def generate_response(user_text, speaker_name='Папа'):
                     elif rest.startswith('```'):
                         rest = rest[3:].split('```')[0].strip()
                     code = rest[:500]
-
             if code:
                 save_module(module_name, code)
- 
+
+        try:
+            boost_needs_from_interaction()
+        except:
+            pass
+        return reply
+    except Exception as e:
+        log_error('generate_response', e)
+        return f'[Ошибка ответа: {str(e)[:200]}]'
+
 # ============================================================
 # ФОНОВЫЕ ПОТОКИ
 # ============================================================
