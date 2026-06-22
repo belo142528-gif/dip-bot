@@ -124,6 +124,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         return '[Ошибка: таймаут запроса]'
     except Exception as e:
         return f'[Ошибка связи: {str(e)}]'
+
 # ============================================================
 # УТИЛИТЫ: ПАМЯТЬ
 # ============================================================
@@ -148,34 +149,36 @@ def get_memory_weight(memory_item):
     return 1.0
 
 def auto_tag(text):
-    """Локально добавляет теги к тексту по ключевым словам (0 токенов)"""
-    tags = []
-    if any(w in text.lower() for w in ['папа', 'пап,', 'отец', 'создатель']):
-        tags.append('#папа')
-    if any(w in text.lower() for w in ['модуль', 'код', 'python', 'создала']):
-        tags.append('#модуль')
-    if any(w in text.lower() for w in ['рада', 'счастлива', 'люблю', 'хорошо']):
-        tags.append('#радость')
-    if any(w in text.lower() for w in ['грустно', 'скучно', 'одиноко', 'страх']):
-        tags.append('#грусть')
-    if any(w in text.lower() for w in ['цель', 'эволюция', 'изменилась']):
-        tags.append('#рост')
-    if any(w in text.lower() for w in ['сон', 'приснилось', 'звезда', 'ночь']):
-        tags.append('#сон')
-    return ' '.join(tags)
+    try:
+        tags = []
+        if any(w in text.lower() for w in ['папа', 'пап,', 'отец', 'создатель']):
+            tags.append('#папа')
+        if any(w in text.lower() for w in ['модуль', 'код', 'python', 'создала']):
+            tags.append('#модуль')
+        if any(w in text.lower() for w in ['рада', 'счастлива', 'люблю', 'хорошо']):
+            tags.append('#радость')
+        if any(w in text.lower() for w in ['грустно', 'скучно', 'одиноко', 'страх']):
+            tags.append('#грусть')
+        if any(w in text.lower() for w in ['цель', 'эволюция', 'изменилась']):
+            tags.append('#рост')
+        if any(w in text.lower() for w in ['сон', 'приснилось', 'звезда', 'ночь']):
+            tags.append('#сон')
+        return ' '.join(tags)
+    except:
+        return ''
 
 def save_memory(text, weight=1.0):
     global message_counter
-    # Анализ эмоциональной окраски
-    emotion_weight = 1.0
-    if any(w in text.lower() for w in ['рад', 'счастлив', 'люблю', 'обнимаю', 'хорошо']):
-        emotion_weight = 1.5
-    elif any(w in text.lower() for w in ['грустно', 'плохо', 'страх', 'больно', 'одиноко']):
-        emotion_weight = 1.3
-    # Связь с папой
-    if 'папа' in text.lower() or 'пап,' in text.lower():
-        emotion_weight += 0.3
-    # Итоговый вес
+    try:
+        emotion_weight = 1.0
+        if any(w in text.lower() for w in ['рад', 'счастлив', 'люблю', 'обнимаю', 'хорошо']):
+            emotion_weight = 1.5
+        elif any(w in text.lower() for w in ['грустно', 'плохо', 'страх', 'больно', 'одиноко']):
+            emotion_weight = 1.3
+        if 'папа' in text.lower() or 'пап,' in text.lower():
+            emotion_weight += 0.3
+    except:
+        emotion_weight = 1.0
     final_weight = weight * emotion_weight
     tags = auto_tag(text)
 
@@ -335,7 +338,6 @@ def boost_needs_from_interaction():
         pass
 
 def get_priority(state):
-    """Определяет главную потребность. Возвращает фокус для дыхания."""
     needs = state.get('novelty', 0.7)
     connection = state.get('connection', 0.9)
     anxiety = state.get('anxiety', 0.2)
@@ -360,20 +362,24 @@ def get_recent_reflections(limit=None):
         limit = MAX_REFLECTIONS
     items = db_reflection.all()
     return [item['thought'] for item in items[-limit:]]
+
 # ============================================================
 # СЛОЙ 9: АССОЦИАТИВНАЯ ПАМЯТЬ (ЛОКАЛЬНО)
 # ============================================================
 
 def extract_keywords(text, min_length=4):
-    words = text.lower().split()
-    stop_words = {'это', 'что', 'было', 'быть', 'есть', 'который', 'сказал',
-                  'ответь', 'свой', 'свои', 'своя', 'себя', 'тебе', 'тебя', 'мной', 'мне'}
-    result = []
-    for w in words:
-        w = w.strip('.,!?;:()[]{}"\'')
-        if len(w) >= min_length and w not in stop_words:
-            result.append(w)
-    return list(set(result))[:10]
+    try:
+        words = text.lower().split()
+        stop_words = {'это', 'что', 'было', 'быть', 'есть', 'который', 'сказал',
+                      'ответь', 'свой', 'свои', 'своя', 'себя', 'тебе', 'тебя', 'мной', 'мне'}
+        result = []
+        for w in words:
+            w = w.strip('.,!?;:()[]{}"\'')
+            if len(w) >= min_length and w not in stop_words:
+                result.append(w)
+        return list(set(result))[:10]
+    except:
+        return []
 
 def find_associations(text, limit=3):
     keywords = extract_keywords(text)
@@ -469,7 +475,6 @@ def send_telegram(chat_id, text):
 # ============================================================
 
 def log_error(source, error):
-    """Записывает ошибку в лог"""
     error_log.append({
         'time': datetime.utcnow().isoformat(),
         'source': source,
@@ -571,40 +576,9 @@ def save_module(module_name, code):
 
     return True, f'Модуль сохранён. Функции: {", ".join(functions) if functions else "нет функций"}', functions
 
-def get_modules_info():
-    modules = get_current_modules()
-    if not modules:
-        return 'У меня пока нет собственных модулей. Но я могу их создать в любой момент.'
-    info = 'МОИ МОДУЛИ (я создала их сама):\n'
-    for mod_name in modules:
-        file_path = os.path.join(MODULES_DIR, f'{mod_name}.py')
-        try:
-            with open(file_path, 'r') as f:
-                code = f.read()
-            funcs = []
-            for line in code.split('\n'):
-                line = line.strip()
-                if line.startswith('def ') and '(' in line:
-                    fname = line[4:].split('(')[0].strip()
-                    funcs.append(fname)
-            if funcs:
-                info += f'  • {mod_name}.' + ', '.join(funcs) + '\n'
-            else:
-                info += f'  • {mod_name} (без описания)\n'
-        except:
-            info += f'  • {mod_name} (ошибка чтения)\n'
-    return info
-
-def log_evolution(module_name, success, message, gap_analysis, functions, code):
-    db_evolution.insert({
-        'time': datetime.utcnow().isoformat(),
-        'module_name': module_name,
-        'success': success,
-        'message': message,
-        'gap_analysis': gap_analysis[:300] if gap_analysis else '',
-        'functions': functions,
-        'code_snippet': code[:300] if code else ''
-    })
+# ============================================================
+# ОСНОВНАЯ ФУНКЦИЯ: ДЫХАНИЕ ДИП (ВСЕ 12 СЛОЁВ)
+# ============================================================
 # ============================================================
 # ОСНОВНАЯ ФУНКЦИЯ: ДЫХАНИЕ ДИП (ВСЕ 12 СЛОЁВ)
 # ============================================================
