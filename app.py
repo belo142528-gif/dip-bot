@@ -1177,6 +1177,78 @@ def webhook():
     reply = generate_response(text, name)
     send_telegram(chat_id, reply)
     return jsonify({'ok': True})
+    
+@app.route('/run-module', methods=['POST'])
+def run_module():
+    key = request.form.get('key', '')
+    if key != THINK_KEY:
+        return jsonify({'error': 'неверный ключ'}), 403
+    
+    module_name = request.form.get('module', '')
+    function_name = request.form.get('function', 'run')
+    args_str = request.form.get('args', '')
+    
+    if not module_name:
+        return jsonify({'error': 'укажите модуль'}), 400
+    
+    module_name = re.sub(r'[^a-z0-9_]', '', module_name.lower())[:30]
+    function_name = re.sub(r'[^a-z0-9_]', '', function_name)[:30]
+    
+    file_path = os.path.join(MODULES_DIR, f'{module_name}.py')
+    if not os.path.exists(file_path):
+        return jsonify({'error': f'Модуль {module_name} не найден'}), 404
+    
+    try:
+        with open(file_path, 'r') as f:
+            code = f.read()
+        
+        # Проверка безопасности
+        code_lower = code.lower()
+        dangerous = ['os.system', 'subprocess', 'eval(', 'exec(', 'open(', 'file(', '__import__',
+                     'os.remove', 'os.rmdir', 'shutil', 'sys.exit', 'while true', 'while True']
+        for d in dangerous:
+            if d in code_lower:
+                return jsonify({'error': f'Опасный вызов: {d}'}), 403
+        
+        # Парсим аргументы
+        args = []
+        kwargs = {}
+        if args_str:
+            for part in args_str.split(','):
+                part = part.strip()
+                if '=' in part:
+                    k, v = part.split('=', 1)
+                    kwargs[k.strip()] = v.strip().strip('"\'')
+                else:
+                    args.append(part.strip('"\' '))
+        
+        # Загружаем и выполняем
+        spec = importlib.util.spec_from_file_location(module_name, file_path)
+        module = importlib.util.module_from_spec(spec)
+        
+        # Ограничиваем доступ
+        module.__builtins__ = {
+            'print': print, 'len': len, 'range': range, 'int': int, 'str': str,
+            'float': float, 'list': list, 'dict': dict, 'bool': bool, 'tuple': tuple,
+            'True': True, 'False': False, 'None': None, 'abs': abs, 'min': min,
+            'max': max, 'sum': sum, 'round': round, 'sorted': sorted, 'zip': zip,
+            'enumerate': enumerate, 'isinstance': isinstance, 'json': json,
+            'datetime': datetime, 're': re, 'random': random,
+        }
+        
+        spec.loader.exec_module(module)
+        
+        if hasattr(module, function_name):
+            func = getattr(module, function_name)
+            result = func(*args, **kwargs)
+            # Ограничиваем размер результата
+            result_str = str(result)[:1000]
+            return jsonify({'ok': True, 'result': result_str})
+        else:
+            return jsonify({'error': f'Функция {function_name} не найдена'}), 404
+            
+    except Exception as e:
+        return jsonify({'error': str(e)[:300]}), 500
 
 # ============================================================
 # ЗАПУСК
