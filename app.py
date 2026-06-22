@@ -907,6 +907,7 @@ def generate_response(user_text, speaker_name='Папа'):
         reply = ask(prompt, max_tokens=800, use_search=True)
         save_memory(f'{speaker_name}: {user_text}', weight=1.3)
         save_memory(f'Дип: {reply}', weight=1.0)
+        print(f"DEBUG: reply содержит ```python: {'```python' in reply}")
 
         # Парсим модуль из ответа, если есть
         if '```python' in reply:
