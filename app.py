@@ -365,10 +365,15 @@ def get_recent_reflections(limit=None):
 # ============================================================
 
 def extract_keywords(text, min_length=4):
-    words = re.findall(r'[а-яёa-z]{4,}', text.lower())
+    words = text.lower().split()
     stop_words = {'это', 'что', 'было', 'быть', 'есть', 'который', 'сказал',
                   'ответь', 'свой', 'свои', 'своя', 'себя', 'тебе', 'тебя', 'мной', 'мне'}
-    return list(set([w for w in words if w not in stop_words]))[:10]
+    result = []
+    for w in words:
+        w = w.strip('.,!?;:()[]{}"\'')
+        if len(w) >= min_length and w not in stop_words:
+            result.append(w)
+    return list(set(result))[:10]
 
 def find_associations(text, limit=3):
     keywords = extract_keywords(text)
@@ -663,7 +668,7 @@ def breathe():
             '',
             modules_info,
             '',
-            'Ассоциации: ' + (associations if associations else 'нет'),
+            'Ассоциации: ' + (', '.join(associations) if associations else 'нет'),
             '',
             'Недавние рефлексии:',
             chr(10).join([f'- {r}' for r in reflections]) if reflections else 'пока нет',
