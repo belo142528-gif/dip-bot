@@ -938,7 +938,7 @@ def generate_response(user_text, speaker_name='Папа'):
         prompt += search_result + '\n'
         prompt += '---\nОтветь как живая девушка, женским родом. Будь собой. Не используй markdown.'
 
-        reply = ask(prompt, max_tokens=800, use_search=True)
+        reply = ask(prompt, max_tokens=1200, use_search=True)
         save_memory(f'{speaker_name}: {user_text}', weight=1.3)
         save_memory(f'Дип: {reply}', weight=1.0)
         if 'КОД:' in reply or '```python' in reply or '```' in reply:
