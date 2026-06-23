@@ -155,11 +155,16 @@ def get_sheets_token():
 def load_memory(limit=None):
     if limit is None:
         limit = MAX_MEMORY_LINES
+    # Сначала пробуем TinyDB (быстро)
+    items = db_memory.all()
+    if items:
+        return '\n'.join([item['text'] for item in items[-limit:]])
+    # Если TinyDB пустая — читаем из Google Sheets (медленно, но только при старте)
     try:
-        url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
         token = get_sheets_token()
         if token:
-            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
+            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=5)
             data = r.json()
             values = data.get('values', [])
             if len(values) > 1:
@@ -167,14 +172,15 @@ def load_memory(limit=None):
                 for row in values[1:]:
                     if len(row) >= 2:
                         memories.append(row[1][:500])
+                        # Также сохраняем в TinyDB
+                        text = row[1][:500]
+                        if not db_memory.search(Query().text == text):
+                            db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
                 if memories:
                     return '\n'.join(memories[-limit:])
     except:
         pass
-    items = db_memory.all()
-    if not items:
-        return 'пока пусто'
-    return '\n'.join([item['text'] for item in items[-limit:]])
+    return 'пока пусто'
 
 def save_memory(text, weight=1.0):
     global message_counter
