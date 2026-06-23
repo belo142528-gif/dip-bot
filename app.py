@@ -113,7 +113,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
             OPENROUTER_URL,
             headers=headers,
             json=payload,
-            timeout=120
+            timeout=180
         )
         resp = r.json()
         if 'choices' not in resp:
