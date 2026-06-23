@@ -155,32 +155,14 @@ def get_sheets_token():
 def load_memory(limit=None):
     if limit is None:
         limit = MAX_MEMORY_LINES
-    # Сначала пробуем TinyDB (быстро)
     items = db_memory.all()
-    if items:
-        return '\n'.join([item['text'] for item in items[-limit:]])
-    # Если TinyDB пустая — читаем из Google Sheets (медленно, но только при старте)
+    if not items:
+        return 'пока пусто'
     try:
-        token = get_sheets_token()
-        if token:
-            url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
-            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=5)
-            data = r.json()
-            values = data.get('values', [])
-            if len(values) > 1:
-                memories = []
-                for row in values[1:]:
-                    if len(row) >= 2:
-                        memories.append(row[1][:500])
-                        # Также сохраняем в TinyDB
-                        text = row[1][:500]
-                        if not db_memory.search(Query().text == text):
-                            db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
-                if memories:
-                    return '\n'.join(memories[-limit:])
+        items_sorted = sorted(items, key=lambda x: get_memory_weight(x), reverse=True)
     except:
-        pass
-    return 'пока пусто'
+        items_sorted = items
+    return '\n'.join([item['text'] for item in items_sorted[-limit:]])
 
 def save_memory(text, weight=1.0):
     global message_counter
@@ -1322,19 +1304,37 @@ def sheets_test():
 # ============================================================
 
 if __name__ == '__main__':
+    # Восстанавливаем TinyDB из Google Sheets при старте
+    try:
+        token = get_sheets_token()
+        if token:
+            url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
+            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            data = r.json()
+            values = data.get('values', [])
+            if len(values) > 1:
+                existing_texts = {item['text'] for item in db_memory.all()}
+                for row in values[1:]:
+                    if len(row) >= 2:
+                        text = row[1][:1500]
+                        if text not in existing_texts:
+                            db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
+                            existing_texts.add(text)
+    except:
+        pass
+    
     load_from_gist()
-
+    
     import time as _time
     _time.sleep(3)
-
+    
     breath_thread = threading.Thread(target=breath_loop, daemon=True)
     breath_thread.start()
-
+    
     needs_thread = threading.Thread(target=needs_loop, daemon=True)
     needs_thread.start()
-
+    
     print("Дип запущена. Все 12 слоёв активны. Мозг: DeepSeek R1 через OpenRouter.")
-    print(f"Фоновые потоки запущены: дыхание={breath_thread.is_alive()}, потребности={needs_thread.is_alive()}")
-
+    
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
