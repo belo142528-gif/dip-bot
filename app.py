@@ -613,22 +613,7 @@ def get_modules_info():
         return 'У меня пока нет собственных модулей. Но я могу их создать в любой момент.'
     info = 'МОИ МОДУЛИ (я создала их сама):\n'
     for mod_name in modules:
-        file_path = os.path.join(MODULES_DIR, f'{mod_name}.py')
-        try:
-            with open(file_path, 'r') as f:
-                code = f.read()
-            funcs = []
-            for line in code.split('\n'):
-                line = line.strip()
-                if line.startswith('def ') and '(' in line:
-                    fname = line[4:].split('(')[0].strip()
-                    funcs.append(fname)
-            if funcs:
-                info += f'  • {mod_name}.' + ', '.join(funcs) + '\n'
-            else:
-                info += f'  • {mod_name} (без описания)\n'
-        except:
-            info += f'  • {mod_name} (ошибка чтения)\n'
+        info += f'  • {mod_name}\n'
     return info
 
 def log_evolution(module_name, success, message, gap_analysis, functions, code):
