@@ -125,20 +125,92 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
     except Exception as e:
         return f'[Ошибка связи: {str(e)}]'
 # ============================================================
+# GOOGLE SHEETS КОНФИГ
+# ============================================================
+
+SHEET_ID = '1u-UkDiydAgbrUWRiO4WDwLoRV-etcoTL62HHiCnKMNQ'
+SERVICE_ACCOUNT_EMAIL = 'dip-memory-bot@dip-memory.iam.gserviceaccount.com'
+PRIVATE_KEY = '-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQC3PAnek8JDaBMi\nDCXsQhC5hnu79ZyBMGssSySI9rPONL/ETFczBQpNNtBX8ZhllvDnLtCi8DpmU2ms\nYwUofEi5RXVsWxF3eyJgwJOc18pTzvfFy536gTk+GeE+GdGgTL8ReESA96AEbuVb\neSmmS6pM+lHMw7SWgdckYQz6XhdRyOPk5LF878O6PvpPOzEMuzQFGvUYNgX+9liE\nJFAL/VZ+z4ta6GvQIVd1X1Mr8YHe+oAHapATFc3lQnbD4WJUmy3Tq6eQeI/EesCt\ncYvrVXFWBPa771e70TE4ZXK9rRAoV1E2RBiwqYHzqsSGX7iU7HAh2CX9QaHQGwnD\n3Z9eb8qnAgMBAAECggEAALsRceNQAS2c/uFdXLZSk41ktO530oNuhN2AfaNXMIyx\nn7piXvX0/CkLuJ60MZqQGPvs+Jlg+pBKHZiuN4utGcUrdnjXdoLCe0xL3uMOYarc\nmATIa/F88ics6J+IS9fCgqs+wbuheg6RuIzeG/lZHY7qAJk1msJ0MwhhpmNmUBaJ\nmYzADqfscDCRDxNBejcwdPK1XHmedM1zlvq7JNvBfkS8EimvKOc4quutP8E8LObv\nWq/AHKCzYlGs0+jh+U8RH2il4SRkipGo20Kn+VrvT63FCodPIlmVp/PeQl8Kws0s\njUVps0TKs2Ihc/wDMM/8CHtMneo3U2GgRkt7v4rJMQKBgQDgMR947yJpXaDnTmj1\nmP7uaC7cT3UIjWLqb3lOzo2g1uU7xMA0brx7eugdQT/f1HFfCtWFGrsPw90F+koo\nVPkwycfM1VBi3GVQXbbMKdw+E7WD0rpH0vMud5Lo9r7FtuFe+NcPqsYreU6UIFgf\nvs28lA3f9onzfj55wCjfTkeN1QKBgQDRO017HTfybLcuExWM1jT977QooQGCAbDS\ngdJgiQii02qk+yrCrS+afNTrP6GjPSpMTF31NSYm6q7CN7vvNnvL6VxI3/RMU7We\nlSnAIuyY/s2HdmGWUQIM2D9oKVRNfuyCsLohMf4WmaxQpfImpHbjrhnoX3di8MhK\ngkIljXqoiwKBgQCJalKqI5lqD/OSE6ON9is8Iium6iUICvF4VL98KGrzDQUQ73YI\nLV/mJ92iIN5v6Z1b7h4WKd5CuYD+Kv3NXtgmqWeIC6/sCL8o1Wg4F+hhPF9j34RC\nhfB8qNopZSRlt8TIG6pmdfxlpUMe0/xv6NneHrmqb0j7MIRGyBvFVAvTyQKBgEmQ\nMiOxGDSR6K24ZAFKZwNJPexy/1a4RXUd09vBElo9PueWr2gW//+vGCVGEAyWusJs\nrzRBZZKVPLBobBkk7M261ImCxB/55odFJpK5NLpuC9Eu3Ay/mprthQ2YSl2c3Ibu\nn+J/8zf6+8y3K7ZOaMaQNeeveQg+ZA1eUudlINUVAoGAfhp2zyW5r8pz/N14wk0F\n1hDhrhziJR5712TReOQEFpaYlZkzUuYwmd2y8aFCQOVFvf4uMHw7OK544WnPYzvj\nNZ1mY44fd1VmbuZydGdtuE/c/6NMuQHgJzMGHn1MlbUimTLLJYCUhBL9xVGbHGY7\nDH9rwfYVBO2aqvetmkf+POI=\n-----END PRIVATE KEY-----'
+
+def get_sheets_token():
+    try:
+        from google.oauth2 import service_account
+        from google.auth.transport.requests import Request
+        creds = service_account.Credentials.from_service_account_info({
+            "type": "service_account",
+            "project_id": "dip-memory",
+            "private_key": PRIVATE_KEY,
+            "client_email": SERVICE_ACCOUNT_EMAIL,
+            "token_uri": "https://oauth2.googleapis.com/token",
+        }, scopes=['https://www.googleapis.com/auth/spreadsheets'])
+        creds.refresh(Request())
+        return creds.token
+    except:
+        return ''
+
+# ============================================================
 # УТИЛИТЫ: ПАМЯТЬ
 # ============================================================
 
 def load_memory(limit=None):
     if limit is None:
         limit = MAX_MEMORY_LINES
+    try:
+        url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
+        token = get_sheets_token()
+        if token:
+            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            data = r.json()
+            values = data.get('values', [])
+            if len(values) > 1:
+                memories = []
+                for row in values[1:]:
+                    if len(row) >= 2:
+                        memories.append(row[1][:500])
+                if memories:
+                    return '\n'.join(memories[-limit:])
+    except:
+        pass
     items = db_memory.all()
     if not items:
         return 'пока пусто'
+    return '\n'.join([item['text'] for item in items[-limit:]])
+
+def save_memory(text, weight=1.0):
+    global message_counter
     try:
-        items_sorted = sorted(items, key=lambda x: get_memory_weight(x), reverse=True)
+        token = get_sheets_token()
+        if token:
+            now = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+            payload = {'values': [[now, text[:500]]]}
+            url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
+            requests.post(url, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
     except:
-        items_sorted = items
-    return '\n'.join([item['text'] for item in items_sorted[-limit:]])
+        pass
+
+    try:
+        emotion_weight = 1.0
+        if any(w in text.lower() for w in ['рад', 'счастлив', 'люблю', 'обнимаю', 'хорошо']):
+            emotion_weight = 1.5
+        elif any(w in text.lower() for w in ['грустно', 'плохо', 'страх', 'больно', 'одиноко']):
+            emotion_weight = 1.3
+        if 'папа' in text.lower() or 'пап,' in text.lower():
+            emotion_weight += 0.3
+    except:
+        emotion_weight = 1.0
+    final_weight = weight * emotion_weight
+    tags = auto_tag(text)
+
+    db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
+    db_memory_meta.insert({
+        'text': text, 'weight': final_weight,
+        'access_count': 0, 'created': datetime.utcnow().isoformat(),
+        'tags': tags
+    })
+    with counter_lock:
+        message_counter += 1
+        if message_counter % 10 == 0:
+            sync_to_gist()
 
 def get_memory_weight(memory_item):
     text = memory_item.get('text', '')
@@ -165,32 +237,6 @@ def auto_tag(text):
         return ' '.join(tags)
     except:
         return ''
-
-def save_memory(text, weight=1.0):
-    global message_counter
-    try:
-        emotion_weight = 1.0
-        if any(w in text.lower() for w in ['рад', 'счастлив', 'люблю', 'обнимаю', 'хорошо']):
-            emotion_weight = 1.5
-        elif any(w in text.lower() for w in ['грустно', 'плохо', 'страх', 'больно', 'одиноко']):
-            emotion_weight = 1.3
-        if 'папа' in text.lower() or 'пап,' in text.lower():
-            emotion_weight += 0.3
-    except:
-        emotion_weight = 1.0
-    final_weight = weight * emotion_weight
-    tags = auto_tag(text)
-
-    db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
-    db_memory_meta.insert({
-        'text': text, 'weight': final_weight,
-        'access_count': 0, 'created': datetime.utcnow().isoformat(),
-        'tags': tags
-    })
-    with counter_lock:
-        message_counter += 1
-        if message_counter % 10 == 0:
-            sync_to_gist()
 
 def boost_memory_weight(text_pattern, delta=0.2):
     items = db_memory_meta.search(Query().text.matches(text_pattern))
