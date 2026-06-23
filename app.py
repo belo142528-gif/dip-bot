@@ -1295,6 +1295,21 @@ def run_module():
             
     except Exception as e:
         return jsonify({'error': str(e)[:300]}), 500
+        
+@app.route('/sheets-test')
+def sheets_test():
+    token = get_sheets_token()
+    if token:
+        # Пробуем записать тестовую строку
+        try:
+            url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
+            payload = {'values': [['2026-01-01 00:00:00', 'TEST']]}
+            r = requests.post(url, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
+            return jsonify({'token_ok': True, 'write_status': r.status_code, 'write_response': r.text[:500]})
+        except Exception as e:
+            return jsonify({'token_ok': True, 'write_error': str(e)})
+    else:
+        return jsonify({'token_ok': False, 'error': 'no token'})
 
 # ============================================================
 # ЗАПУСК
