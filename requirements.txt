@@ -3,3 +3,4 @@ requests
 gunicorn
 tinydb
 PyJWT
+google-auth
