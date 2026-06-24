@@ -110,7 +110,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         }
 
         payload = {
-            'model': 'deepseek/deepseek-r1',
+            'model': 'deepseek/deepseek-r1-distill-llama-70b',
             'messages': [{'role': 'user', 'content': prompt}],
             'temperature': temperature,
             'max_tokens': max_tokens
