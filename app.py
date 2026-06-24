@@ -575,7 +575,7 @@ def validate_module_code(code):
 
 def save_module(module_name, code):
     ensure_modules_dir()
-    module_name = re.sub(r'[^a-z0-9_]', '', module_name.lower())[:30]
+    module_name = ''.join(c for c in module_name.lower() if c.isalnum() or c == '_')[:30]
     if not module_name:
         module_name = f'module_{len(get_current_modules()) + 1}'
 
@@ -1215,8 +1215,8 @@ def run_module():
     if not module_name:
         return jsonify({'error': 'укажите модуль'}), 400
 
-    module_name = re.sub(r'[^a-z0-9_]', '', module_name.lower())[:30]
-    function_name = re.sub(r'[^a-z0-9_]', '', function_name)[:30]
+    module_name = ''.join(c for c in module_name.lower() if c.isalnum() or c == '_')[:30]
+    function_name = ''.join(c for c in function_name.lower() if c.isalnum() or c == '_')[:30]
 
     file_path = os.path.join(MODULES_DIR, f'{module_name}.py')
     if not os.path.exists(file_path):
