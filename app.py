@@ -1022,6 +1022,7 @@ HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" c
 def home():
     return HTML + '<div style="text-align:center;padding:10px;background:#222;"><a href="/download" style="color:#1a73e8;font-size:14px;text-decoration:none;">Скачать память</a> | <a href="/download-modules" style="color:#1a73e8;font-size:14px;text-decoration:none;">Скачать модули</a> | <a href="/state-view" style="color:#1a73e8;font-size:14px;text-decoration:none;">Состояние</a> | <a href="/modules?key=dipkey" style="color:#1a73e8;font-size:14px;text-decoration:none;">Модули</a></div>'
 @app.route('/state-view')
+
 def state_view():
     state = get_state()
     reflections = get_recent_reflections(10)
