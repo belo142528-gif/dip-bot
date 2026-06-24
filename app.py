@@ -1289,23 +1289,31 @@ def sheets_test():
 
 if __name__ == '__main__':
     # Восстанавливаем TinyDB из Google Sheets при старте
+    print("Восстановление памяти из Google Sheets...")
     try:
         token = get_sheets_token()
         if token:
+            print("Токен получен")
             url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
             r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
             data = r.json()
             values = data.get('values', [])
+            print(f"Загружено {len(values)} строк из таблицы")
             if len(values) > 1:
                 existing_texts = {item['text'] for item in db_memory.all()}
+                loaded = 0
                 for row in values[1:]:
                     if len(row) >= 2:
                         text = row[1][:1500]
                         if text not in existing_texts:
                             db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
                             existing_texts.add(text)
-    except:
-        pass
+                            loaded += 1
+                print(f"Восстановлено {loaded} записей в TinyDB")
+        else:
+            print("Не удалось получить токен")
+    except Exception as e:
+        print(f"Ошибка восстановления: {str(e)[:200]}")
     
     load_from_gist()
     
