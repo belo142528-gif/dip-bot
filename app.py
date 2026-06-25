@@ -936,6 +936,14 @@ def generate_response(user_text, speaker_name='Папа'):
         save_memory(f'{speaker_name}: {user_text}', weight=1.3)
         if search_result:
             save_memory(f'Дип (поиск): {search_result}', weight=1.2)
+            # Сохраняем результат поиска отдельно
+            search_info = reply_original
+            try:
+                import re as _re2
+                search_info = _re2.sub(r'<[^>]*>', '', search_info)
+            except:
+                pass
+            save_memory(f'Дип (результат): {search_info[:500]}', weight=1.5)
         save_memory(f'Дип: {reply_original}', weight=1.0)
         
         if 'КОД:' in reply_clean or '```python' in reply_clean or '```' in reply_clean:
