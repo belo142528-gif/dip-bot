@@ -926,19 +926,27 @@ def generate_response(user_text, speaker_name='Папа'):
         reply = ask(prompt, max_tokens=800, use_search=True)
         save_memory(f'{speaker_name}: {user_text}', weight=1.3)
         save_memory(f'Дип: {reply}', weight=1.0)
-        if 'КОД:' in reply or '```python' in reply or '```' in reply:
+        
+        # Фильтруем теги для чата
+        try:
+            import re as _re
+            reply_clean = _re.sub(r'<[^>]*>', '', reply)
+        except:
+            reply_clean = reply
+        
+        if 'КОД:' in reply_clean or '```python' in reply_clean or '```' in reply_clean:
             module_name = 'module_from_chat'
-            for line in reply.split('\n'):
+            for line in reply_clean.split('\n'):
                 if line.strip().startswith('МОДУЛЬ:'):
                     module_name = line.strip().replace('МОДУЛЬ:', '').strip()
                     break
             code = ''
-            if '```python' in reply:
-                parts = reply.split('```python')
+            if '```python' in reply_clean:
+                parts = reply_clean.split('```python')
                 if len(parts) > 1:
                     code = parts[1].split('```')[0].strip() if '```' in parts[1] else parts[1].strip()[:500]
-            elif 'КОД:' in reply:
-                parts = reply.split('КОД:')
+            elif 'КОД:' in reply_clean:
+                parts = reply_clean.split('КОД:')
                 if len(parts) > 1:
                     rest = parts[1].strip()
                     if rest.startswith('python'):
@@ -955,7 +963,7 @@ def generate_response(user_text, speaker_name='Папа'):
             boost_needs_from_interaction()
         except:
             pass
-        return reply
+        return reply_clean
     except Exception as e:
         log_error('generate_response', e)
         return f'[Ошибка ответа: {str(e)[:200]}]'
