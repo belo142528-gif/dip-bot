@@ -144,7 +144,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
             error_msg = resp.get('error', {}).get('message', 'неизвестная ошибка')
             return f'[Ошибка API: {error_msg}]'
         content = resp['choices'][0]['message']['content'].strip()
-return content
+        return content
     except requests.exceptions.Timeout:
         return '[Ошибка: таймаут запроса]'
     except Exception as e:
