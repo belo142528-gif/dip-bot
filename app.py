@@ -143,7 +143,8 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         if 'choices' not in resp:
             error_msg = resp.get('error', {}).get('message', 'неизвестная ошибка')
             return f'[Ошибка API: {error_msg}]'
-        return resp['choices'][0]['message']['content'].strip()
+        content = resp['choices'][0]['message']['content'].strip()
+return content
     except requests.exceptions.Timeout:
         return '[Ошибка: таймаут запроса]'
     except Exception as e:
@@ -924,15 +925,16 @@ def generate_response(user_text, speaker_name='Папа'):
         prompt += '---\nОтветь как живая девушка, женским родом. Будь собой. Не используй markdown.'
 
         reply = ask(prompt, max_tokens=800, use_search=True)
-        save_memory(f'{speaker_name}: {user_text}', weight=1.3)
-        save_memory(f'Дип: {reply}', weight=1.0)
+        reply_original = reply
         
-        # Фильтруем теги для чата
         try:
             import re as _re
             reply_clean = _re.sub(r'<[^>]*>', '', reply)
         except:
             reply_clean = reply
+        
+        save_memory(f'{speaker_name}: {user_text}', weight=1.3)
+        save_memory(f'Дип: {reply_original}', weight=1.0)
         
         if 'КОД:' in reply_clean or '```python' in reply_clean or '```' in reply_clean:
             module_name = 'module_from_chat'
