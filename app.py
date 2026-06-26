@@ -140,6 +140,15 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
             timeout=180
         )
         resp = r.json()
+        # Защита от битых тегов
+        try:
+            raw_text = resp.get('choices', [{}])[0].get('message', {}).get('content', '')
+            if raw_text:
+                import re as _re_deep
+                raw_text = _re_deep.sub(r'<[^>]*>', '', raw_text)
+                resp['choices'][0]['message']['content'] = raw_text
+        except:
+            pass
         if 'choices' not in resp:
             error_msg = resp.get('error', {}).get('message', 'неизвестная ошибка')
             return f'[Ошибка API: {error_msg}]'
