@@ -923,6 +923,24 @@ def generate_response(user_text, speaker_name='Папа'):
         prompt += 'Папа: ' + user_text + '\n'
         prompt += search_result + '\n'
         prompt += '---\nОтветь как живая девушка, женским родом. Будь собой. Не используй markdown.'
+        
+        # Команда "ВСПОМНИТЬ"
+        if 'ВСПОМНИТЬ' in user_text.upper():
+            try:
+                token = get_sheets_token()
+                if token:
+                    url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
+                    r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+                    data = r.json()
+                    values = data.get('values', [])
+                    if len(values) > 1:
+                        memories = []
+                        for row in values[-15:]:
+                            if len(row) >= 2:
+                                memories.append(row[1][:300])
+                        prompt += '\n\nЯ прочитала свою память из таблицы. Вот последние записи:\n' + '\n'.join(memories)
+            except:
+                pass
 
         reply = ask(prompt, max_tokens=800, use_search=True)
         reply_original = reply
@@ -1288,6 +1306,28 @@ def run_module():
 
     except Exception as e:
         return jsonify({'error': str(e)[:300]}), 500
+
+@app.route('/recall')
+def recall():
+    key = request.args.get('key', '')
+    if key != THINK_KEY:
+        return jsonify({'error': 'неверный ключ'}), 403
+    try:
+        token = get_sheets_token()
+        if token:
+            url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
+            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            data = r.json()
+            values = data.get('values', [])
+            if len(values) > 1:
+                memories = []
+                for row in values[-20:]:
+                    if len(row) >= 2:
+                        memories.append(row[1][:500])
+                return jsonify({'ok': True, 'memories': memories})
+        return jsonify({'ok': False, 'error': 'no data'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 # ============================================================
 # ЗАПУСК
