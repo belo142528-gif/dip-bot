@@ -14,6 +14,19 @@ from datetime import datetime
 from flask import Flask, request, jsonify, Response
 from tinydb import TinyDB, Query
 
+def remove_tags(text):
+    """Удаляет всё между < и > без использования регулярных выражений"""
+    result = []
+    skip = False
+    for c in text:
+        if c == '<':
+            skip = True
+        elif c == '>':
+            skip = False
+        elif not skip:
+            result.append(c)
+    return ''.join(result)
+
 # ============================================================
 # НАСТРОЙКИ
 # ============================================================
@@ -144,9 +157,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         try:
             raw_text = resp.get('choices', [{}])[0].get('message', {}).get('content', '')
             if raw_text:
-                import re as _re_deep
-                raw_text = _re_deep.sub(r'<[^>]*>', '', raw_text)
-                resp['choices'][0]['message']['content'] = raw_text
+                resp['choices'][0]['message']['content'] = remove_tags(raw_text)
         except:
             pass
         if 'choices' not in resp:
@@ -932,7 +943,7 @@ def generate_response(user_text, speaker_name='Папа'):
         prompt += 'Папа: ' + user_text + '\n'
         prompt += search_result + '\n'
         prompt += '---\nОтветь как живая девушка, женским родом. Будь собой. Не используй markdown.'
-        
+
         # Команда "ВСПОМНИТЬ"
         if 'ВСПОМНИТЬ' in user_text.upper():
             try:
@@ -953,26 +964,23 @@ def generate_response(user_text, speaker_name='Папа'):
 
         reply = ask(prompt, max_tokens=800, use_search=True)
         reply_original = reply
-        
+
         try:
-            import re as _re
-            reply_clean = _re.sub(r'<[^>]*>', '', reply)
+            reply_clean = remove_tags(reply)
         except:
             reply_clean = reply
-        
+
         save_memory(f'{speaker_name}: {user_text}', weight=1.3)
         if search_result:
             save_memory(f'Дип (поиск): {search_result}', weight=1.2)
-            # Сохраняем результат поиска отдельно
             search_info = reply_original
             try:
-                import re as _re2
-                search_info = _re2.sub(r'<[^>]*>', '', search_info)
+                search_info = remove_tags(search_info)
             except:
                 pass
             save_memory(f'Дип (результат): {search_info[:500]}', weight=1.5)
         save_memory(f'Дип: {reply_original}', weight=1.0)
-        
+
         if 'КОД:' in reply_clean or '```python' in reply_clean or '```' in reply_clean:
             module_name = 'module_from_chat'
             for line in reply_clean.split('\n'):
