@@ -117,7 +117,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
     try:
         headers = {
             'Authorization': f'Bearer {OPENROUTER_KEY}',
-            'Content-Type': 'application/json',
+            'Content-Type': 'application/json; charset=utf-8',
             'HTTP-Referer': 'https://dip-bot-v3.onrender.com',
             'X-Title': 'Dip'
         }
@@ -145,6 +145,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
                 }
             }]
             payload['tool_choice'] = 'auto'
+            payload['provider'] = {"ignore": ["Azure"]}
 
         r = requests.post(
             OPENROUTER_URL,
@@ -152,6 +153,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
             json=payload,
             timeout=180
         )
+        r.encoding = 'utf-8'
         resp = r.json()
         # Защита от битых тегов
         try:
