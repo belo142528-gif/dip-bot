@@ -165,7 +165,10 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         if 'choices' not in resp:
             error_msg = resp.get('error', {}).get('message', 'неизвестная ошибка')
             return f'[Ошибка API: {error_msg}]'
-        content = resp['choices'][0]['message']['content'].strip()
+        raw = resp['choices'][0]['message'].get('content')
+        if raw is None:
+            return '[Ошибка: пустой ответ от модели]'
+        content = raw.strip()
         # Защита от битых скобок
         try:
             if content.count('(') != content.count(')'):
