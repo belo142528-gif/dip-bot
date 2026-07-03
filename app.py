@@ -155,27 +155,13 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         )
         r.encoding = 'utf-8'
         resp = r.json()
-        # Защита от битых тегов
-        try:
-            raw_text = resp.get('choices', [{}])[0].get('message', {}).get('content', '')
-            if raw_text:
-                resp['choices'][0]['message']['content'] = remove_tags(raw_text)
-        except:
-            pass
         if 'choices' not in resp:
             error_msg = resp.get('error', {}).get('message', 'неизвестная ошибка')
             return f'[Ошибка API: {error_msg}]'
-        raw = resp['choices'][0]['message'].get('content')
-        if raw is None:
+        content = resp['choices'][0]['message'].get('content')
+        if content is None:
             return '[Ошибка: пустой ответ от модели]'
-        content = raw.strip()
-        # Защита от битых скобок
-        try:
-            if content.count('(') != content.count(')'):
-                content = content.replace('(', '[').replace(')', ']')
-        except:
-            pass
-        return content
+        return content.strip()
     except requests.exceptions.Timeout:
         return '[Ошибка: таймаут запроса]'
     except Exception as e:
