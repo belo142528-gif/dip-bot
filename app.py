@@ -155,7 +155,6 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         )
         r.encoding = 'utf-8'
         resp = r.json()
-        print(f"DEBUG resp: {str(resp)[:500]}")
         if 'choices' not in resp:
             error_msg = resp.get('error', {}).get('message', 'неизвестная ошибка')
             return f'[Ошибка API: {error_msg}]'
@@ -163,15 +162,17 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         content = msg.get('content')
         if content is None and msg.get('tool_calls'):
             try:
-                tool_args = msg['tool_calls'][0]['function']['arguments']
-                tool_json = json.loads(tool_args)
-                query = tool_json.get('query', '')
-                content = f'[Поиск: {query}]'
+                payload['messages'].append({'role': 'assistant', 'content': None, 'tool_calls': msg['tool_calls']})
+                payload['messages'].append({'role': 'tool', 'tool_call_id': msg['tool_calls'][0]['id'], 'content': 'Search results'})
+                r2 = requests.post(OPENROUTER_URL, headers=headers, json=payload, timeout=180)
+                r2.encoding = 'utf-8'
+                resp2 = r2.json()
+                content = resp2['choices'][0]['message'].get('content')
             except:
                 content = '[Поиск...]'
         if content is None:
             return '[Ошибка: пустой ответ от модели]'
-        return content.strip() 
+        return content.strip()
     except requests.exceptions.Timeout:
         return '[Ошибка: таймаут запроса]'
     except Exception as e:
