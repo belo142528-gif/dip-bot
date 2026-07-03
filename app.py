@@ -159,10 +159,19 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         if 'choices' not in resp:
             error_msg = resp.get('error', {}).get('message', 'неизвестная ошибка')
             return f'[Ошибка API: {error_msg}]'
-        content = resp['choices'][0]['message'].get('content')
+        msg = resp['choices'][0].get('message', {})
+        content = msg.get('content')
+        if content is None and msg.get('tool_calls'):
+            try:
+                tool_args = msg['tool_calls'][0]['function']['arguments']
+                tool_json = json.loads(tool_args)
+                query = tool_json.get('query', '')
+                content = f'[Поиск: {query}]'
+            except:
+                content = '[Поиск...]'
         if content is None:
             return '[Ошибка: пустой ответ от модели]'
-        return content.strip()
+        return content.strip() 
     except requests.exceptions.Timeout:
         return '[Ошибка: таймаут запроса]'
     except Exception as e:
