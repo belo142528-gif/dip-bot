@@ -155,6 +155,16 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         )
         r.encoding = 'utf-8'
         resp = r.json()
+        # ДИАГНОСТИКА
+        try:
+            print(f"DEBUG: response keys: {resp.keys()}")
+            print(f"DEBUG: choices: {resp.get('choices', [])}")
+            msg = resp.get('choices', [{}])[0].get('message', {})
+            print(f"DEBUG: message keys: {msg.keys()}")
+            print(f"DEBUG: content: {msg.get('content')}")
+            print(f"DEBUG: tool_calls: {msg.get('tool_calls')}")
+        except Exception as e:
+            print(f"DEBUG error: {e}")
         if 'choices' not in resp:
             error_msg = resp.get('error', {}).get('message', 'неизвестная ошибка')
             return f'[Ошибка API: {error_msg}]'
