@@ -1347,7 +1347,7 @@ def recall():
                 memories = []
                 for row in values[-20:]:
                     if len(row) >= 2:
-                        memories.append(row[1][:500])
+                        memories.append(row[1][:5000])
                 return jsonify({'ok': True, 'memories': memories})
         return jsonify({'ok': False, 'error': 'no data'})
     except Exception as e:
