@@ -1188,7 +1188,7 @@ def restore_modules():
 
     return f'Восстановлено {count} модулей. <a href="/">К Дип</a>'
 
- @app.route('/restore', methods=['GET', 'POST'])
+@app.route('/restore', methods=['GET', 'POST'])
 def restore():
     if request.method == 'GET':
         return '''
