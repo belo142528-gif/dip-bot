@@ -1188,17 +1188,20 @@ def restore_modules():
 
     return f'Восстановлено {count} модулей. <a href="/">К Дип</a>'
 
-@app.route('/restore', methods=['GET', 'POST'])
+ @app.route('/restore', methods=['GET', 'POST'])
 def restore():
     if request.method == 'GET':
         return '''
         <html><body style="background:#111;color:#eee;padding:20px;font-family:system-ui">
         <h2>Восстановление памяти Дип</h2>
-        <form method="POST">
-        <textarea name="data" style="width:100%;height:300px;background:#333;color:#fff;border:none;padding:10px"></textarea>
-        <br><br>
-        Ключ: <input name="key" type="password" style="background:#333;color:#fff;border:none;padding:10px">
-        <br><br>
+        <form method="POST" enctype="multipart/form-data">
+        <textarea name="data" style="width:100%;height:200px;background:#333;color:#fff;border:none;padding:10px;margin:10px 0;"></textarea>
+        <br>
+        <b>ИЛИ загрузите файл:</b>
+        <input type="file" name="file" accept=".txt,.csv" style="color:#fff;margin:10px 0;">
+        <br>
+        Ключ: <input name="key" type="password" style="background:#333;color:#fff;border:none;padding:10px;margin:10px 0;">
+        <br>
         <button type="submit" style="padding:10px 30px;background:#1a73e8;color:#fff;border:none;border-radius:5px">Восстановить</button>
         </form></body></html>'''
 
@@ -1207,8 +1210,14 @@ def restore():
         return 'Неверный ключ', 403
 
     data = request.form.get('data', '')
+    
+    # Если загружен файл — читаем из него
+    if 'file' in request.files and request.files['file'].filename:
+        file = request.files['file']
+        data = file.read().decode('utf-8', errors='ignore')
+    
     if not data:
-        return 'Вставьте данные', 400
+        return 'Вставьте данные или выберите файл', 400
 
     count = 0
     for line in data.strip().split('\n'):
@@ -1225,7 +1234,7 @@ def restore():
 
     sync_to_gist()
     return f'Восстановлено {count} записей. <a href="/">К Дип</a>'
-
+    
 @app.route('/diary')
 def view_diary():
     key = request.args.get('key', '')
