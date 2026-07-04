@@ -1369,7 +1369,7 @@ if __name__ == '__main__':
                 existing_texts = {item['text'] for item in db_memory.all()}
                 for row in values[1:]:
                     if len(row) >= 2:
-                        text = row[1][:1500]
+                        text = row[1][:5000]
                         if text not in existing_texts:
                             db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
                             existing_texts.add(text)
