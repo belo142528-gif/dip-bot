@@ -225,7 +225,7 @@ def save_memory(text, weight=1.0):
         token = get_sheets_token()
         if token:
             now = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
-            payload = {'values': [[now, text[:1500]]]}
+            payload = {'values': [[now, text[:5000]]]}
             url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS'
             requests.post(url, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
     except:
