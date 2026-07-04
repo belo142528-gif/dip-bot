@@ -975,8 +975,11 @@ def generate_response(user_text, speaker_name='Папа'):
         try:
             reply_clean = remove_tags(reply)
         except:
-            reply_clean = reply
-
+            try:
+                reply_clean = reply.encode('utf-8', errors='ignore').decode('utf-8')
+            except:
+                reply_clean = reply
+                
         save_memory(f'{speaker_name}: {user_text}', weight=1.3)
         if search_result:
             save_memory(f'Дип (поиск): {search_result}', weight=1.2)
