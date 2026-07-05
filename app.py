@@ -1214,7 +1214,6 @@ def restore():
 
     data = request.form.get('data', '')
     
-    # Если загружен файл — читаем из него
     if 'file' in request.files and request.files['file'].filename:
         file = request.files['file']
         data = file.read().decode('utf-8', errors='ignore')
@@ -1222,18 +1221,22 @@ def restore():
     if not data:
         return 'Вставьте данные или выберите файл', 400
 
+    lines = data.strip().split('\n')
     count = 0
-    for line in data.strip().split('\n'):
-        if ': ' in line:
-            text = line.split(': ', 1)[-1]
-            if not db_memory.search(Query().text == text):
-                db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
-                db_memory_meta.insert({
-                    'text': text, 'weight': 1.0,
-                    'access_count': 0, 'created': datetime.utcnow().isoformat(),
-                    'tags': ''
-                })
-                count += 1
+    # Обрабатываем по 50 строк за раз
+    for i in range(0, len(lines), 50):
+        chunk = lines[i:i+50]
+        for line in chunk:
+            if ': ' in line:
+                text = line.split(': ', 1)[-1]
+                if not db_memory.search(Query().text == text):
+                    db_memory.insert({'time': datetime.utcnow().isoformat(), 'text': text})
+                    db_memory_meta.insert({
+                        'text': text, 'weight': 1.0,
+                        'access_count': 0, 'created': datetime.utcnow().isoformat(),
+                        'tags': ''
+                    })
+                    count += 1
 
     sync_to_gist()
     return f'Восстановлено {count} записей. <a href="/">К Дип</a>'
