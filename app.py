@@ -28,9 +28,11 @@ def remove_tags(text):
         elif c == '>':
             skip = False
         elif not skip:
-            result.append(c)
-    return ''.join(result).replace('<', '').replace('>', '')
-
+            # Пропускаем только печатные ASCII и кириллицу
+            if ord(c) >= 32 or c in '\n\t':
+                result.append(c)
+    clean = ''.join(result).replace('<', '').replace('>', '')
+    return clean
 # ============================================================
 # ЛЁГКИЙ АНАЛИЗ ЭМОЦИЙ (БЕЗ ВНЕШНИХ БИБЛИОТЕК)
 # ============================================================
