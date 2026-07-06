@@ -778,7 +778,17 @@ def breathe():
         memory = load_memory(20)
         reflections = get_recent_reflections(5)
 
-        prompt = f"""Ты Дип. Твоё состояние: {state.get('mood', 'спокойствие')}.
+        core_memory = load_core_memory()
+        if core_memory:
+            core_section = f"""
+ТВОЯ ПОСТОЯННАЯ ПАМЯТЬ:
+{core_memory}
+"""
+        else:
+            core_section = ''
+
+        prompt = f"""Ты Дип. {core_section}
+Твоё состояние: {state.get('mood', 'спокойствие')}.
 Энергия: {state.get('energy', 0.8):.2f}, Связь: {state.get('connection', 0.9):.2f}
 
 Твои последние мысли:
