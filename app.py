@@ -896,7 +896,8 @@ def generate_response(user_text, speaker_name='Папа'):
         prompt = '\n'.join(prompt_lines)
 
         use_search = any(w in user_text.lower() for w in ['поищи', 'найди', 'загугли', 'узнай'])
-        reply = ask(prompt, temperature=0.9, max_tokens=400, use_search=use_search)
+        max_tok = 800 if use_search else 400
+        reply = ask(prompt, temperature=0.9, max_tokens=max_tok, use_search=use_search)
 
         try:
             reply_clean = remove_tags(reply)
