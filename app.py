@@ -258,18 +258,16 @@ def load_core_memory():
     try:
         token = get_sheets_token()
         if not token:
-            return '[Ошибка: нет токена]'
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'CoreMemory'!A1"
+            return ''
+        url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/memory!A1'
         r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
-        if r.status_code != 200:
-            return f'[Ошибка API: {r.status_code} — {r.text[:200]}]'
         data = r.json()
         values = data.get('values', [])
         if values and len(values) > 0 and len(values[0]) > 0:
             return values[0][0]
-        return '[Ошибка: ячейка пуста]'
-    except Exception as e:
-        return f'[Ошибка: {str(e)[:200]}]'
+        return ''
+    except:
+        return ''
         
 def load_memory(limit=None):
     if limit is None:
