@@ -259,7 +259,7 @@ def load_core_memory():
         token = get_sheets_token()
         if not token:
             return ''
-        url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/CoreMemory!A1'
+        url = f''https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'CoreMemory'!A1''
         r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
         data = r.json()
         values = data.get('values', [])
