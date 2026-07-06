@@ -255,30 +255,23 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
 # ============================================================
 
 def load_core_memory():
+    token = get_sheets_token()
+    if not token:
+        return 'ТОКЕН НЕ ПОЛУЧЕН'
+    url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/memory!A1'
     try:
-        token = get_sheets_token()
-        print(f"[COREMEM] token ok: {bool(token)}")
-        if not token:
-            return ''
-        url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/memory!A1'
-        print(f"[COREMEM] url: {url}")
-        r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
-        print(f"[COREMEM] status: {r.status_code}")
-        if r.status_code != 200:
-            print(f"[COREMEM] error body: {r.text[:300]}")
-            return ''
-        data = r.json()
-        print(f"[COREMEM] data keys: {list(data.keys())}")
-        values = data.get('values', [])
-        print(f"[COREMEM] values count: {len(values)}")
-        if values and len(values) > 0 and len(values[0]) > 0:
-            print(f"[COREMEM] OK, length: {len(values[0][0])}")
-            return values[0][0]
-        print("[COREMEM] empty cell")
-        return ''
+        r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=15)
+        if r.status_code == 200:
+            data = r.json()
+            values = data.get('values', [])
+            if values and values[0]:
+                return values[0][0]
+            else:
+                return f'ЯЧЕЙКА ПУСТА. Ответ API: {r.text[:200]}'
+        else:
+            return f'ОШИБКА {r.status_code}: {r.text[:300]}'
     except Exception as e:
-        print(f"[COREMEM] exception: {e}")
-        return ''
+        return f'ИСКЛЮЧЕНИЕ: {str(e)}'
         
 def load_memory(limit=None):
     if limit is None:
