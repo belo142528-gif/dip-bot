@@ -661,8 +661,8 @@ def validate_module_code(code):
 
     try:
         ast.parse(code)
-    except SyntaxError:
-        pass
+    except SyntaxError as e:
+        return False, f'Ошибка синтаксиса: {str(e)[:100]}', None
 
     code_lower = code.lower()
 
@@ -778,7 +778,9 @@ def breathe():
 ЧУВСТВО: ...
 РЕФЛЕКСИЯ: ..."""
 
-        response = ask(prompt, temperature=0.9, max_tokens=300, use_search=False)
+        response = ask(prompt, temperature=0.9, max_tokens=400, use_search=False)
+        if response is None:
+            response = 'Я задумалась...'
 
         lines = response.split('\n')
         thought = ''
