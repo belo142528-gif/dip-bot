@@ -1360,7 +1360,21 @@ def recall():
         return jsonify({'ok': False, 'error': 'no data'})
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
+        
+@app.route('/coremem')
+def core_mem():
+    key = request.args.get('key', '')
+    if key != THINK_KEY:
+        return jsonify({'error': 'неверный ключ'}), 403
+    try:
+        result = load_core_memory()
+        if result:
+            return jsonify({'ok': True, 'length': len(result), 'preview': result[:200]})
+        else:
+            return jsonify({'ok': False, 'error': 'пусто'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+        
 # ============================================================
 # ЗАПУСК
 # ============================================================
