@@ -254,6 +254,21 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
 # УТИЛИТЫ: ПАМЯТЬ
 # ============================================================
 
+def load_core_memory():
+    try:
+        token = get_sheets_token()
+        if not token:
+            return ''
+        url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/CoreMemory!A1'
+        r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+        data = r.json()
+        values = data.get('values', [])
+        if values and len(values) > 0 and len(values[0]) > 0:
+            return values[0][0]
+        return ''
+    except:
+        return ''
+        
 def load_memory(limit=None):
     if limit is None:
         limit = 20
