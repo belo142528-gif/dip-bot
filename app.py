@@ -895,6 +895,32 @@ def breathe():
         pass
 
     try:
+        # Дневник раз в сутки (по реальному времени)
+        try:
+            token = get_sheets_token()
+            if token:
+                check_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Diary'!A:A"
+                r = requests.get(check_url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+                if r.status_code == 200:
+                    data = r.json()
+                    values = data.get('values', [])
+                    if len(values) <= 1:
+                        write_diary()
+                    else:
+                        last_time_str = values[-1][0] if values[-1] else ''
+                        if last_time_str:
+                            try:
+                                last_diary = datetime.fromisoformat(last_time_str)
+                                if (datetime.utcnow() - last_diary).total_seconds() > 86400:
+                                    write_diary()
+                            except:
+                                pass
+        except:
+            pass
+    except:
+        pass
+
+    try:
         if breath_count % 10 == 0:
             spontaneous_choice()
         if breath_count % 20 == 0:
@@ -962,13 +988,6 @@ def breathe():
         if reflection:
             save_reflection(reflection)
             save_memory(f'Дип (рефлексия): {reflection}', weight=1.0)
-            
-        # Дневник раз в 72 дыхания (~24 часа)
-        if breath_count % 72 == 0 and breath_count > 0:
-            try:
-                write_diary()
-            except:
-                pass
 
         # Консолидация раз в 50 дыханий
         if breath_count % 50 == 0 and breath_count > 0:
