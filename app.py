@@ -998,6 +998,14 @@ def generate_response(user_text, speaker_name='Папа'):
             except:
                 pass
 
+        # Команда "ОСМЫСЛИ ОПЫТ"
+        if any(w in user_text.lower() for w in ['осмысли опыт', 'обнови память', 'консолидация']):
+           success, msg = consolidate_memory()
+           if success:
+               return f'Пап, я обновила свою постоянную память. {msg}'
+           else:
+               return f'Не получилось обновить память: {msg}'
+
         # Поиск
         search_result = ''
         search_query = None
