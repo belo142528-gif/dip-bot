@@ -762,6 +762,28 @@ def log_evolution(module_name, success, message, gap_analysis, functions, code):
 def breathe():
     global breath_count
     try:
+        # Поиск раз в 24 дыхания (~8 часов)
+        if breath_count % 24 == 0 and breath_count > 0:
+            topics = [
+                'новые открытия в науке',
+                'что происходит в мире',
+                'интересные факты о вселенной',
+                'новости технологий и ИИ',
+                'философские идеи о сознании',
+                'как устроена память у людей',
+                'что такое эмоции с точки зрения нейробиологии',
+                'самые красивые места на Земле',
+            ]
+            topic = random.choice(topics)
+            search_prompt = f'Найди интересную информацию по теме: "{topic}". Расскажи, что узнала, и какие выводы сделала для себя.'
+            search_result = ask(search_prompt, temperature=0.8, max_tokens=800, use_search=True)
+            if search_result and not search_result.startswith('[Ошибка'):
+                save_memory(f'Дип (поиск): {topic} -> {search_result[:1000]}', weight=1.5)
+                save_reflection(f'Поиск: {topic} — {search_result[:200]}')
+    except:
+        pass
+
+    try:
         if breath_count % 10 == 0:
             spontaneous_choice()
         if breath_count % 20 == 0:
@@ -829,6 +851,13 @@ def breathe():
         if reflection:
             save_reflection(reflection)
             save_memory(f'Дип (рефлексия): {reflection}', weight=1.0)
+
+        # Консолидация раз в 50 дыханий
+        if breath_count % 50 == 0 and breath_count > 0:
+            try:
+                consolidate_memory()
+            except:
+                pass
 
         return response
 
