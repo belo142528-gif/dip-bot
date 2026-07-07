@@ -938,7 +938,7 @@ def breathe():
 ЧУВСТВО: ...
 РЕФЛЕКСИЯ: ..."""
 
-        response = ask(prompt, temperature=0.9, max_tokens=400, use_search=False)
+        response = ask(prompt, temperature=0.9, max_tokens=600, use_search=False)
         if response is None:
             response = 'Я задумалась...'
 
