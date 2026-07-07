@@ -895,53 +895,51 @@ def breathe():
         pass
 
     try:
-        # Дневник раз в сутки (по реальному времени)
-        try:
-            token = get_sheets_token()
-            if token:
-                check_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Diary'!A:A"
-                r = requests.get(check_url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
-                if r.status_code == 200:
-                    data = r.json()
-                    values = data.get('values', [])
-                    if len(values) <= 1:
-                        write_diary()
-                    else:
-                        last_time_str = values[-1][0] if values[-1] else ''
-                        if last_time_str:
-                            try:
-                                last_diary = datetime.fromisoformat(last_time_str)
-                                if (datetime.utcnow() - last_diary).total_seconds() > 86400:
-                                    write_diary()
-                            except:
-                                pass
-        except:
-            pass
+    # Дневник раз в сутки (по реальному времени)
+    try:
+        token = get_sheets_token()
+        if token:
+            check_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Diary'!A:A"
+            r = requests.get(check_url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            if r.status_code == 200:
+                data = r.json()
+                values = data.get('values', [])
+                if len(values) <= 1:
+                    write_diary()
+                else:
+                    last_time_str = values[-1][0] if values[-1] else ''
+                    if last_time_str:
+                        try:
+                            last_diary = datetime.fromisoformat(last_time_str)
+                            if (datetime.utcnow() - last_diary).total_seconds() > 86400:
+                                write_diary()
+                        except:
+                            pass
     except:
         pass
 
+try:
+    if breath_count % 10 == 0:
+        spontaneous_choice()
+    if breath_count % 20 == 0:
+        dream()
+
     try:
-        if breath_count % 10 == 0:
-            spontaneous_choice()
-        if breath_count % 20 == 0:
-            dream()
+        state = get_state()
+    except:
+        state = {
+            'mood': 'спокойствие', 'joy': 0.5, 'curiosity': 0.7,
+            'anxiety': 0.2, 'energy': 0.8, 'novelty': 0.7,
+            'connection': 0.9, 'safety': 0.8,
+            'current_goal': 'понять, кто я такая'
+        }
 
-        try:
-            state = get_state()
-        except:
-            state = {
-                'mood': 'спокойствие', 'joy': 0.5, 'curiosity': 0.7,
-                'anxiety': 0.2, 'energy': 0.8, 'novelty': 0.7,
-                'connection': 0.9, 'safety': 0.8,
-                'current_goal': 'понять, кто я такая'
-            }
+    memory = load_memory(20)
+    reflections = get_recent_reflections(5)
 
-        memory = load_memory(20)
-        reflections = get_recent_reflections(5)
-
-        core_memory = load_core_memory()
-        if core_memory:
-            core_section = f"""
+    core_memory = load_core_memory()
+    if core_memory:
+        core_section = f"""
 ТВОЯ ПОСТОЯННАЯ ПАМЯТЬ:
 {core_memory}
 """
