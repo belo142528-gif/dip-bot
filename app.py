@@ -962,6 +962,13 @@ def breathe():
         if reflection:
             save_reflection(reflection)
             save_memory(f'Дип (рефлексия): {reflection}', weight=1.0)
+            
+        # Дневник раз в 72 дыхания (~24 часа)
+        if breath_count % 72 == 0 and breath_count > 0:
+            try:
+                write_diary()
+            except:
+                pass
 
         # Консолидация раз в 50 дыханий
         if breath_count % 50 == 0 and breath_count > 0:
@@ -975,7 +982,10 @@ def breathe():
     except Exception as e:
         log_error('breathe', e)
         return f'[Ошибка дыхания: {str(e)[:200]}]'
-        
+
+
+
+                       
 # ============================================================
 # ДИАЛОГ С ПАПОЙ
 # ============================================================
