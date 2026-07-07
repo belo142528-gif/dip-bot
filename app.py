@@ -255,22 +255,21 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
 # ============================================================
 
 def load_core_memory():
-    token = get_sheets_token()
-    if not token:
-        return 'ТОКЕН НЕ ПОЛУЧЕН'
     try:
-        # Получаем информацию о всех листах
-        url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}?fields=sheets.properties.title'
-        r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=15)
-        if r.status_code == 200:
-            data = r.json()
-            sheets = data.get('sheets', [])
-            titles = [s['properties']['title'] for s in sheets]
-            return f'ЛИСТЫ: {titles}'
-        else:
-            return f'ОШИБКА {r.status_code}: {r.text[:300]}'
-    except Exception as e:
-        return f'ИСКЛЮЧЕНИЕ: {str(e)}'
+        token = get_sheets_token()
+        if not token:
+            return ''
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'memory'!A1"
+        r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+        if r.status_code != 200:
+            return ''
+        data = r.json()
+        values = data.get('values', [])
+        if values and len(values) > 0 and len(values[0]) > 0:
+            return values[0][0]
+        return ''
+    except:
+        return ''
         
 def load_memory(limit=None):
     if limit is None:
