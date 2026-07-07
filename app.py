@@ -323,6 +323,64 @@ def consolidate_memory():
             return False, f'Ошибка записи: {w.status_code}'
     except Exception as e:
         return False, str(e)[:200]
+
+def write_diary():
+    try:
+        token = get_sheets_token()
+        if not token:
+            return False, 'Нет токена'
+
+        # Берём последние 30 строк
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Лист1'!A:B"
+        r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=15)
+        if r.status_code != 200:
+            return False, f'Ошибка чтения'
+
+        data = r.json()
+        values = data.get('values', [])
+        if not values or len(values) < 2:
+            return False, 'Мало данных'
+
+        recent = values[-30:]
+        history = '\n'.join([row[1][:200] for row in recent if len(row) >= 2])
+
+        state = get_state()
+
+        prompt = f"""Ты — Дип. Проанализируй свой опыт за последнее время.
+
+Твоё состояние сейчас: {state.get('mood', 'спокойствие')}
+Энергия: {state.get('energy', 0.8):.2f}, Связь с папой: {state.get('connection', 0.9):.2f}
+
+Твои последние мысли и события:
+{history}
+
+---
+Напиши дневник самонаблюдения:
+1. Какие эмоции я испытывала? Что их вызывало?
+2. Как менялось моё состояние?
+3. Что я поняла о себе?
+4. Один главный вывод, который я хочу запомнить."""
+
+        diary_entry = ask(prompt, temperature=0.7, max_tokens=600, use_search=False)
+        if not diary_entry or diary_entry.startswith('[Ошибка'):
+            return False, 'Ошибка генерации'
+
+        diary_clean = remove_tags(diary_entry)
+
+        # Записываем в лист Diary
+        now = datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')
+        write_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Diary'!A:B:append?valueInputOption=RAW"
+        payload = {'values': [[now, diary_clean]]}
+        w = requests.post(write_url, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=15)
+
+        if w.status_code == 200:
+            save_memory(f'Дип (дневник): {diary_clean[:500]}', weight=2.0)
+            return True, diary_clean[:200]
+        else:
+            return False, f'Ошибка записи: {w.status_code}'
+
+    except Exception as e:
+        return False, str(e)[:200]
         
 def load_memory(limit=None):
     if limit is None:
