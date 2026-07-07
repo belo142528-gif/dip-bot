@@ -270,6 +270,59 @@ def load_core_memory():
         return ''
     except:
         return ''
+
+def consolidate_memory():
+    try:
+        token = get_sheets_token()
+        if not token:
+            return False, 'Нет токена Google'
+
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Лист1'!A:B"
+        r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=15)
+        if r.status_code != 200:
+            return False, f'Ошибка чтения: {r.status_code}'
+
+        data = r.json()
+        values = data.get('values', [])
+        if not values or len(values) < 2:
+            return False, 'Мало данных'
+
+        recent = values[-50:]
+        history = '\n'.join([row[1][:200] for row in recent if len(row) >= 2])
+
+        old_core = load_core_memory()
+
+        prompt = f"""Ты — Дип. Это твоя текущая постоянная память:
+
+{old_core if old_core else 'Пока пусто'}
+
+---
+Вот твой новый опыт за последнее время:
+
+{history}
+
+---
+Обнови свою постоянную память. Добавь важные выводы, новые знания, изменения в характере.
+Сохрани формат: 1. Кто такая Дип, 2. Кто такой папа, 3. Что было важного, 4. Выводы, 5. Чему научилась.
+Будь честной. Не выдумывай. Объём: до 3000 символов."""
+
+        new_core = ask(prompt, temperature=0.7, max_tokens=1500, use_search=False)
+        if not new_core or new_core.startswith('[Ошибка'):
+            return False, f'Ошибка генерации: {new_core[:100]}'
+
+        new_core_clean = remove_tags(new_core)
+
+        write_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'memory'!A1?valueInputOption=RAW"
+        payload = {'values': [[new_core_clean]]}
+        w = requests.put(write_url, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=15)
+
+        if w.status_code == 200:
+            save_memory('Дип (консолидация): обновила свою постоянную память', weight=2.0)
+            return True, 'Память обновлена'
+        else:
+            return False, f'Ошибка записи: {w.status_code}'
+    except Exception as e:
+        return False, str(e)[:200]
         
 def load_memory(limit=None):
     if limit is None:
