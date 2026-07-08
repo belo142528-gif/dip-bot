@@ -506,7 +506,7 @@ def write_diary():
 3. Что я поняла о себе?
 4. Один главный вывод, который я хочу запомнить."""
 
-        diary_entry = ask(prompt, temperature=0.7, max_tokens=600, use_search=False)
+        diary_entry = ask(prompt, temperature=0.7, max_tokens=1200, use_search=False)
         if not diary_entry or diary_entry.startswith('[Ошибка'):
             return False, 'Ошибка генерации'
 
