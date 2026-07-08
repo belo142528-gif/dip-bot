@@ -1320,6 +1320,7 @@ def generate_response(user_text, speaker_name='Папа'):
 {memory[:800] if memory else 'пока пусто'}
 
 {association_note if association_note else ''}
+{recall_text if recall_text else ''}
 {empathy_note if empathy_note else ''}
 {emotion_note if emotion_note else ''}
 {search_result if search_result else ''}
