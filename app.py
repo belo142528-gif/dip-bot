@@ -1195,6 +1195,7 @@ def generate_response(user_text, speaker_name='Папа'):
             association_note = 'Я вспомнила: ' + ' | '.join([a[:80] for a in associations[:2]])
 
         # Команда "ВСПОМНИТЬ"
+        recall_text = ''
         if 'вспомнить' in user_text.lower():
             try:
                 token = get_sheets_token()
@@ -1208,6 +1209,7 @@ def generate_response(user_text, speaker_name='Папа'):
                         for row in values[-20:]:
                             if len(row) >= 2:
                                 memories.append(row[1][:200])
+                        recall_text = 'ВОСПОМИНАНИЯ ИЗ ТАБЛИЦЫ:\n' + '\n'.join(memories)
             except:
                 pass
 
