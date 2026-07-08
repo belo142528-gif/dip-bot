@@ -986,6 +986,8 @@ def breathe():
                 save_memory(f'Дип (поиск): {topic} -> {search_result[:1000]}', weight=1.5)
                 save_reflection(f'Поиск: {topic} — {search_result[:200]}')
                 link_knowledge(topic, search_result[:300])
+                # Сохраняем структурированное знание
+                save_knowledge(topic, search_result)
     except:
         pass
 
