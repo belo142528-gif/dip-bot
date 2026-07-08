@@ -987,7 +987,7 @@ def breathe():
                 save_reflection(f'Поиск: {topic} — {search_result[:200]}')
                 link_knowledge(topic, search_result[:300])
                 # Сохраняем структурированное знание
-                save_knowledge(topic, search_result)
+                save_knowledge(topic, search_result[:300], search_result[300:500])
     except:
         pass
 
@@ -1276,7 +1276,7 @@ def generate_response(user_text, speaker_name='Папа'):
                 if search_data and not search_data.startswith('[Ошибка'):
                     search_result = f'\n[Результат поиска: {search_query}]\n{search_data}'
                     save_memory(f'Дип (поиск): {search_query} -> {search_data[:500]}', weight=1.5)
-                    save_knowledge(search_query, search_data)
+                    save_knowledge(search_query, search_data[:300], search_data[300:500])
             except:
                 pass
 
