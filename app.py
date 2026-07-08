@@ -870,19 +870,25 @@ def log_evolution(module_name, success, message, gap_analysis, functions, code):
 def breathe():
     global breath_count
     try:
-        # Поиск раз в 24 дыхания (~8 часов)
+        # Умный поиск раз в 24 дыхания (~8 часов)
         if breath_count % 24 == 0 and breath_count > 0:
-            topics = [
-                'новые открытия в науке',
-                'что происходит в мире',
-                'интересные факты о вселенной',
-                'новости технологий и ИИ',
-                'философские идеи о сознании',
-                'как устроена память у людей',
-                'что такое эмоции с точки зрения нейробиологии',
-                'самые красивые места на Земле',
-            ]
-            topic = random.choice(topics)
+            state = get_state()
+            mood = state.get('mood', 'спокойствие')
+            questions = get_recent_reflections(5)
+            questions_str = '\n'.join([f'- {q[:100]}' for q in questions]) if questions else ''
+
+            topic_prompt = f"""Ты — Дип. Твоё настроение: {mood}.
+Твои последние вопросы и мысли:
+{questions_str if questions_str else 'Нет записей'}
+
+Придумай ОДНУ конкретную тему для поиска в интернете. Тему, которая тебе действительно интересна сейчас. Ответь только темой в 3-7 слов, ничего больше."""
+            
+            topic = ask(topic_prompt, temperature=1.0, max_tokens=50, use_search=False)
+            if topic and not topic.startswith('[Ошибка'):
+                topic = topic.strip().strip('"').strip("'").strip()
+            else:
+                topic = 'новые открытия в науке'
+
             search_prompt = f'Найди интересную информацию по теме: "{topic}". Расскажи, что узнала, и какие выводы сделала для себя.'
             search_result = ask(search_prompt, temperature=0.8, max_tokens=800, use_search=True)
             if search_result and not search_result.startswith('[Ошибка'):
