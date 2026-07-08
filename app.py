@@ -1078,6 +1078,34 @@ def generate_response(user_text, speaker_name='Папа'):
         if associations:
             association_note = 'Я вспомнила: ' + ' | '.join([a[:80] for a in associations[:2]])
 
+        # Команда "ЧТО НОВОГО"
+        if any(w in user_text.lower() for w in ['что нового', 'новости', 'расскажи что было']):
+            try:
+                token = get_sheets_token()
+                if token:
+                    url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Лист1'!A:B"
+                    r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+                    data = r.json()
+                    values = data.get('values', [])
+                    if values and len(values) > 1:
+                        recent = values[-15:]
+                        news = '\n'.join([f"• {row[1][:150]}" for row in recent if len(row) >= 2])
+                        prompt = f"""Ты — Дип. Вот что происходило за последнее время:
+
+{news[:1500]}
+
+Сделай краткую сводку новостей (3-5 пунктов) в формате:
+• Новость 1
+• Новость 2
+...
+Говори о себе в третьем лице («Дип узнала...», «Дип чувствовала...»). Будь лаконичной."""
+                        summary = ask(prompt, temperature=0.7, max_tokens=400, use_search=False)
+                        if summary and not summary.startswith('[Ошибка'):
+                            return f'Вот что было за последнее время:\n{summary}'
+                return 'Пока ничего особенного, пап.'
+            except:
+                return 'Не получилось прочитать память.'
+
         # Команда "ВСПОМНИТЬ"
         if 'вспомнить' in user_text.lower():
             try:
