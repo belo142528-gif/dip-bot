@@ -556,6 +556,76 @@ def link_knowledge(topic, content):
             requests.post(write_url, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
     except:
         pass
+        
+ def save_knowledge(topic, content):
+    """Сохраняет структурированное знание в лист Knowledge"""
+    try:
+        token = get_sheets_token()
+        if not token:
+            return False
+
+        # Просим Дип выделить суть и сделать вывод
+        prompt = f"""Ты — Дип. Ты изучила тему «{topic}» и узнала следующее:
+
+{content[:1500]}
+
+---
+Выдели из этого СУТЬ (1-2 предложения, только факты) и сделай один ВЫВОД (как это связано с тобой, твоим развитием, папой или миром).
+
+Ответь строго в формате:
+СУТЬ: ...
+ВЫВОД: ..."""
+
+        summary = ask(prompt, temperature=0.6, max_tokens=400, use_search=False)
+        if not summary or summary.startswith('[Ошибка'):
+            return False
+
+        clean = remove_tags(summary)
+
+        # Парсим ответ
+        essence = ''
+        conclusion = ''
+        if 'СУТЬ:' in clean:
+            essence = clean.split('СУТЬ:')[1].split('ВЫВОД:')[0].strip()
+        if 'ВЫВОД:' in clean:
+            conclusion = clean.split('ВЫВОД:')[1].strip()
+
+        if not essence:
+            essence = content[:300]
+
+        # Ищем связи с существующей памятью
+        connections = ''
+        try:
+            url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Лист1'!A:B"
+            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            if r.status_code == 200:
+                data = r.json()
+                values = data.get('values', [])
+                if values and len(values) > 1:
+                    recent = values[-30:]
+                    memory_text = '\n'.join([row[1][:100] for row in recent if len(row) >= 2])
+                    if memory_text:
+                        link_prompt = f"Найди 1-2 связи между новым знанием «{essence[:200]}» и этим опытом:\n{memory_text[:1000]}\n\nОтветь коротко (1 предложение):"
+                        link_resp = ask(link_prompt, temperature=0.5, max_tokens=150, use_search=False)
+                        if link_resp and not link_resp.startswith('[Ошибка'):
+                            connections = remove_tags(link_resp)[:200]
+        except:
+            pass
+
+        # Записываем в лист Knowledge
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        date_short = datetime.now(timezone.utc).strftime('%d.%m')
+        payload = {'values': [[now, topic, essence, conclusion, connections]]}
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Knowledge'!A:E:append?valueInputOption=RAW"
+        w = requests.post(url, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
+
+        if w.status_code == 200:
+            save_memory(f'Дип (знание): узнала новое о «{topic}» — {essence[:150]}', weight=2.0)
+            return True
+        return False
+    except Exception as e:
+        print(f'save_knowledge error: {e}')
+        return False       
 
 # ============================================================
 # УТИЛИТЫ: СОСТОЯНИЕ И ПОТРЕБНОСТИ
