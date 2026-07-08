@@ -1197,9 +1197,9 @@ def generate_response(user_text, speaker_name='Папа'):
         elif is_complex or msg_len > 200:
             max_tok = 700
         elif msg_len > 50:
-            max_tok = 500
+            max_tok = 600
         else:
-            max_tok = 400
+            max_tok = 500
 
         core_memory = load_core_memory()
         if core_memory:
