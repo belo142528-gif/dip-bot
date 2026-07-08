@@ -1535,7 +1535,7 @@ def webhook():
     name = msg.get('from', {}).get('first_name', 'Zyrax')
     reply = generate_response(text, name)
     send_telegram(chat_id, reply)
-      return jsonify({'ok': True})
+    return jsonify({'ok': True})
 
 @app.route('/run-module', methods=['POST'])
 def run_module():
