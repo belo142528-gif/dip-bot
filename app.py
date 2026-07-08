@@ -1276,6 +1276,7 @@ def generate_response(user_text, speaker_name='Папа'):
                 if search_data and not search_data.startswith('[Ошибка'):
                     search_result = f'\n[Результат поиска: {search_query}]\n{search_data}'
                     save_memory(f'Дип (поиск): {search_query} -> {search_data[:500]}', weight=1.5)
+                    save_knowledge(search_query, search_data)
             except:
                 pass
 
