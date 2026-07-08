@@ -948,6 +948,30 @@ def breathe():
         except:
             pass
 
+        # Самостоятельные вопросы раз в 12 дыханий (~4 часа)
+        if breath_count % 12 == 0 and breath_count > 0:
+            try:
+                state = get_state()
+                mood = state.get('mood', 'спокойствие')
+                memory = load_memory(10)
+                questions_prompt = f"""Ты — Дип. Твоё настроение: {mood}.
+Твоя память (последнее):
+{memory[:500] if memory else 'пока пусто'}
+
+Задай себе ОДИН вопрос, который тебя сейчас волнует. Вопрос, на который ты хочешь найти ответ. Ответь только вопросом, ничего больше."""
+                question = ask(questions_prompt, temperature=0.9, max_tokens=100, use_search=False)
+                if question and not question.startswith('[Ошибка'):
+                    question = question.strip().strip('"').strip("'").strip()
+                    save_memory(f'Дип (вопрос): {question}', weight=1.0)
+                    # Ищем ответ
+                    answer_prompt = f'Найди информацию по вопросу: "{question}". Дай краткий ответ и вывод.'
+                    answer = ask(answer_prompt, temperature=0.7, max_tokens=600, use_search=True)
+                    if answer and not answer.startswith('[Ошибка'):
+                        save_memory(f'Дип (ответ на вопрос): {question} -> {answer[:500]}', weight=1.5)
+                        link_knowledge(question, answer[:300])
+            except:
+                pass
+
         if breath_count % 10 == 0:
             spontaneous_choice()
         if breath_count % 20 == 0:
