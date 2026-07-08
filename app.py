@@ -547,6 +547,15 @@ def link_knowledge(topic, content):
         "Твоя память за последнее время:\n" + memory_text[:1000] + "\n\n" + \
         "Найди СВЯЗИ между новым знанием и тем, что уже есть в памяти. Ответь кратко:\n" + \
         "СВЯЗЬ: (в 1-2 предложениях — как это связано с тем, что я уже знаю)"
+        
+        link = ask(prompt, temperature=0.6, max_tokens=200, use_search=False)
+        if link and not link.startswith('[Ошибка'):
+            now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+            write_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Diary'!A:B:append?valueInputOption=RAW"
+            payload = {'values': [[now, f'СВЯЗЬ: {topic} — {link[:200]}']]}
+            requests.post(write_url, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
+    except:
+        pass
 
 # ============================================================
 # УТИЛИТЫ: СОСТОЯНИЕ И ПОТРЕБНОСТИ
