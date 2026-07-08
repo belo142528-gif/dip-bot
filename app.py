@@ -1015,7 +1015,7 @@ def breathe():
 ЧУВСТВО: ...
 РЕФЛЕКСИЯ: ..."""
 
-        response = ask(prompt, temperature=0.9, max_tokens=600, use_search=False)
+        response = ask(prompt, temperature=0.75, max_tokens=600, use_search=False)
         if response is None:
             response = 'Я задумалась...'
 
@@ -1237,7 +1237,7 @@ def generate_response(user_text, speaker_name='Папа'):
 {'Если в ответе есть результаты поиска — используй их.' if search_result else ''}
 Не используй markdown. Будь искренней и настоящей."""
 
-        reply = ask(prompt, temperature=0.9, max_tokens=max_tok, use_search=False)
+        reply = ask(prompt, temperature=0.75, max_tokens=max_tok, use_search=False)
 
         if reply is None:
             reply = 'Я задумалась... прости, пап. Давай ещё раз?'
