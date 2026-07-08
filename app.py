@@ -557,7 +557,7 @@ def link_knowledge(topic, content):
     except:
         pass
         
- def save_knowledge(topic, content):
+def save_knowledge(topic, content):
     """Сохраняет структурированное знание в лист Knowledge"""
     try:
         token = get_sheets_token()
