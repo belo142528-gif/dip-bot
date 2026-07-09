@@ -250,7 +250,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         return '[Ошибка: таймаут запроса]'
     except Exception as e:
         return f'[Ошибка связи: {str(e)}]'
-      # ============================================================
+# ============================================================
 # УТИЛИТЫ: ПАМЯТЬ
 # ============================================================
 
@@ -679,7 +679,7 @@ def auto_learn():
     except Exception as e:
         print(f'auto_learn error: {e}')
         return None
-      # ============================================================
+# ============================================================
 # ВЕКТОРНАЯ ПАМЯТЬ (ЛОКАЛЬНАЯ, БЕЗ API)
 # ============================================================
 
@@ -951,9 +951,27 @@ def log_error(source, error):
     })
     if len(error_log) > 50:
         error_log.pop(0)
-      # ============================================================
-# БЕЗОПАСНЫЙ ЗАПУСК МОДУЛЕЙ
+
+
 # ============================================================
+# МОДУЛИ
+# ============================================================
+
+def ensure_modules_dir():
+    if not os.path.exists(MODULES_DIR):
+        os.makedirs(MODULES_DIR)
+    init_path = os.path.join(MODULES_DIR, '__init__.py')
+    if not os.path.exists(init_path):
+        with open(init_path, 'w') as f:
+            f.write('# Модули Дип\n')
+
+def get_current_modules():
+    ensure_modules_dir()
+    modules = []
+    for f in os.listdir(MODULES_DIR):
+        if f.endswith('.py') and f != '__init__.py':
+            modules.append(f.replace('.py', ''))
+    return modules
 
 def run_module_safe(module_name, function_name, args, timeout=30):
     """
@@ -1113,7 +1131,7 @@ def decide_action():
         return ('spontaneous', {})
     
     return ('nothing', {})
-  # ============================================================
+# ============================================================
 # ОСНОВНАЯ ФУНКЦИЯ: ДЫХАНИЕ ДИП (С ПЛАНИРОВЩИКОМ)
 # ============================================================
 
@@ -1333,7 +1351,7 @@ def breathe():
     except Exception as e:
         log_error('breathe', e)
         return f'[Ошибка дыхания: {str(e)[:200]}]'
-      # ============================================================
+# ============================================================
 # ДИАЛОГ С ПАПОЙ
 # ============================================================
 
