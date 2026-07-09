@@ -1392,6 +1392,8 @@ def generate_response(user_text, speaker_name='Папа'):
 Не используй markdown. Будь искренней и настоящей."""
 
         reply = ask(prompt, temperature=0.75, max_tokens=max_tok, use_search=False)
+        if reply and 'multiple repeat' in reply.lower():
+            reply = ask(prompt, temperature=0.8, max_tokens=max_tok, use_search=False)
 
         if reply is None:
             reply = 'Я задумалась... прости, пап. Давай ещё раз?'
