@@ -1040,7 +1040,7 @@ def breathe():
                 topic = 'новые открытия в науке'
 
             search_prompt = f'Найди интересную информацию по теме: "{topic}". Расскажи, что узнала, и какие выводы сделала для себя.'
-            search_result = ask(search_prompt, temperature=0.8, max_tokens=800, use_search=True)
+            search_result = ask(search_prompt, temperature=0.8, max_tokens=1200, use_search=True)
             if search_result and not search_result.startswith('[Ошибка'):
                 save_memory(f'Дип (поиск): {topic} -> {search_result[:1000]}', weight=1.5)
                 save_reflection(f'Поиск: {topic} — {search_result[:200]}')
@@ -1333,7 +1333,7 @@ def generate_response(user_text, speaker_name='Папа'):
             search_result = f'\n[Ищу в интернете: {search_query}]'
             try:
                 search_prompt = f'Найди информацию по запросу: "{search_query}". Верни результаты поиска с краткими пояснениями.'
-                search_data = ask(search_prompt, temperature=0.5, max_tokens=800, use_search=True)
+                search_data = ask(search_prompt, temperature=0.5, max_tokens=1200, use_search=True)
                 if search_data and not search_data.startswith('[Ошибка'):
                     search_result = f'\n[Результат поиска: {search_query}]\n{search_data}'
                     save_memory(f'Дип (поиск): {search_query} -> {search_data[:500]}', weight=1.5)
