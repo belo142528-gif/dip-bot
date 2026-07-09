@@ -1800,8 +1800,7 @@ def restore():
                     db_memory.insert({'time': datetime.now(timezone.utc).isoformat(), 'text': text})
                     db_memory_meta.insert({
                         'text': text, 'weight': 1.0,
-                        'access_count': 0, 'created': datetime.
-                                          'access_count': 0, 'created': datetime.now(timezone.utc).isoformat(),
+                        'access_count': 0, 'created': datetime.now(timezone.utc).isoformat(),
                         'tags': ''
                     })
                     count += 1
