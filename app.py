@@ -1887,9 +1887,38 @@ def run_agent():
 # ============================================================
 
 if __name__ == '__main__':
-    # ... вся твоя инициализация ...
+    try:
+        token = get_sheets_token()
+        if token:
+            url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
+            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            data = r.json()
+            values = data.get('values', [])
+            if len(values) > 1:
+                existing_texts = {item['text'] for item in db_memory.all()}
+                for row in values[1:]:
+                    if len(row) >= 2:
+                        text = row[1][:5000]
+                        if text not in existing_texts:
+                            db_memory.insert({'time': datetime.now(timezone.utc).isoformat(), 'text': text})
+                            existing_texts.add(text)
+    except:
+        pass
 
-    # Запуск агента — ПРАВИЛЬНО
+    load_from_gist()
+
+    import time as _time
+    _time.sleep(3)
+
+    breath_thread = threading.Thread(target=breath_loop, daemon=True)
+    breath_thread.start()
+
+    needs_thread = threading.Thread(target=needs_loop, daemon=True)
+    needs_thread.start()
+
+    print("Дип запущена. Все слои активны. Мозг: DeepSeek R1 через OpenRouter.")
+
+    # Запуск агента
     if AGENT_TOKEN:
         try:
             import multiprocessing
@@ -1902,5 +1931,5 @@ if __name__ == '__main__':
     else:
         print("⚠️ AGENT_TOKEN не задан — агент отключён")
 
-    # Запуск Flask
+    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
