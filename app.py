@@ -1851,94 +1851,56 @@ def handle_agent_message(text):
 
 def run_agent():
     if not AGENT_TOKEN:
-        print("⚠️ AGENT_TOKEN не задан — агент не запущен")
+        print("⚠️ AGENT_TOKEN не задан")
         return
-    
+
     import asyncio
-    import threading
     from telegram import Update
     from telegram.ext import Application, CommandHandler, MessageHandler, filters
-    
-    def agent_loop():
-        # СОЗДАЁМ НОВЫЙ ЦИКЛ СОБЫТИЙ ДЛЯ ЭТОГО ПОТОКА
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
-        app = Application.builder().token(AGENT_TOKEN).build()
-        
-        async def handle_text(update, context):
-            chat_id = update.effective_chat.id
-            if ADMIN_ID and str(chat_id) != str(ADMIN_ID):
-                await context.bot.send_message(chat_id, "⛔ У тебя нет прав на управление агентом.")
-                return
-            
-            text = update.message.text
-            reply = handle_agent_message(text)
-            await context.bot.send_message(chat_id, reply[:4000])
-        
-        async def start(update, context):
-            await update.message.reply_text("🤖 Агент запущен. Жду команды.")
-        
-        app.add_handler(CommandHandler("start", start))
-        app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
-        
-        print("🤖 Агент запущен и слушает Telegram...")
-        app.run_polling()
-    
-    thread = threading.Thread(target=agent_loop, daemon=True)
-    thread.start()
-    print("✅ Поток агента запущен")
 
+    # СОЗДАЁМ НОВЫЙ ЦИКЛ СОБЫТИЙ — ЭТО РЕШАЕТ ПРОБЛЕМУ
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+
+    app = Application.builder().token(AGENT_TOKEN).build()
+
+    async def handle_text(update, context):
+        chat_id = update.effective_chat.id
+        if ADMIN_ID and str(chat_id) != str(ADMIN_ID):
+            await context.bot.send_message(chat_id, "⛔ Нет прав.")
+            return
+        text = update.message.text
+        reply = handle_agent_message(text)
+        await context.bot.send_message(chat_id, reply[:4000])
+
+    async def start(update, context):
+        await update.message.reply_text("🤖 Агент запущен. Жду команды.")
+
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+
+    print("🤖 Агент слушает Telegram...")
+    app.run_polling()
 
 # ============================================================
 # ЗАПУСК
 # ============================================================
 
 if __name__ == '__main__':
-    # Инициализация Google Sheets
-    try:
-        token = get_sheets_token()
-        if token:
-            url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
-            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
-            if r.status_code == 200:
-                data = r.json()
-                values = data.get('values', [])
-                if len(values) > 1:
-                    existing_texts = {item['text'] for item in db_memory.all()}
-                    for row in values[1:]:
-                        if len(row) >= 2:
-                            text = row[1][:5000]
-                            if text not in existing_texts:
-                                db_memory.insert({'time': datetime.now(timezone.utc).isoformat(), 'text': text})
-                                existing_texts.add(text)
-    except:
-        pass
+    # ... вся твоя инициализация ...
 
-    # Загрузка из Gist
-    load_from_gist()
-
-    # Запуск фоновых потоков
-    breath_thread = threading.Thread(target=breath_loop, daemon=True)
-    breath_thread.start()
-
-    needs_thread = threading.Thread(target=needs_loop, daemon=True)
-    needs_thread.start()
-
-    # Telegram-агент ВРЕМЕННО ОТКЛЮЧЁН
-    # if AGENT_TOKEN:
-    #     try:
-    #         import multiprocessing
-    #         agent_process = multiprocessing.Process(target=run_agent)
-    #         agent_process.daemon = True
-    #         agent_process.start()
-    #         print("🤖 Агент запущен.")
-    #     except Exception as e:
-    #         print(f"⚠️ Агент не запущен: {e}")
-    # else:
-    #     print("⚠️ AGENT_TOKEN не задан — агент отключён")
+    # Запуск агента — ПРАВИЛЬНО
+    if AGENT_TOKEN:
+        try:
+            import multiprocessing
+            agent_process = multiprocessing.Process(target=run_agent)
+            agent_process.daemon = True
+            agent_process.start()
+            print("🤖 Агент запущен в отдельном процессе.")
+        except Exception as e:
+            print(f"⚠️ Агент не запущен: {e}")
+    else:
+        print("⚠️ AGENT_TOKEN не задан — агент отключён")
 
     # Запуск Flask
-    print("✅ Дип запущена.")
-    port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
