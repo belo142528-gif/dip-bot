@@ -4,3 +4,4 @@ gunicorn
 tinydb
 PyJWT
 google-auth
+python-telegram-bot==20.0
