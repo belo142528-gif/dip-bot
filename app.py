@@ -1892,35 +1892,47 @@ run_agent()
 
 if __name__ == '__main__':
     try:
+        # 1. Инициализация Google Sheets
         token = get_sheets_token()
         if token:
             url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
             r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
-            data = r.json()
-            values = data.get('values', [])
-            if len(values) > 1:
-                existing_texts = {item['text'] for item in db_memory.all()}
-                for row in values[1:]:
-                    if len(row) >= 2:
-                        text = row[1][:5000]
-                        if text not in existing_texts:
-                            db_memory.insert({'time': datetime.now(timezone.utc).isoformat(), 'text': text})
-                            existing_texts.add(text)
-    except:
-        pass
-
-    load_from_gist()
-
-    import time as _time
-    _time.sleep(3)
-
-    breath_thread = threading.Thread(target=breath_loop, daemon=True)
-    breath_thread.start()
-
-    needs_thread = threading.Thread(target=needs_loop, daemon=True)
-    needs_thread.start()
-
-    print("Дип запущена. Все слои активны. Мозг: DeepSeek R1 через OpenRouter.")
-
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+            if r.status_code == 200:
+                data = r.json()
+                values = data.get('values', [])
+                if len(values) > 1:
+                    existing_texts = {item['text'] for item in db_memory.all()}
+                    for row in values[1:]:
+                        if len(row) >= 2:
+                            text = row[1][:5000]
+                            if text not in existing_texts:
+                                db_memory.insert({'time': datetime.now(timezone.utc).isoformat(), 'text': text})
+                                existing_texts.add(text)
+        
+        # 2. Загрузка из Gist
+        load_from_gist()
+        
+        # 3. Запуск фоновых потоков (дыхание, потребности)
+        import threading
+        breath_thread = threading.Thread(target=breath_loop, daemon=True)
+        breath_thread.start()
+        needs_thread = threading.Thread(target=needs_loop, daemon=True)
+        needs_thread.start()
+        
+        # 4. Запуск агента в отдельном процессе (НОВИНКА!)
+        import multiprocessing
+        agent_process = multiprocessing.Process(target=run_agent)
+        agent_process.daemon = True
+        agent_process.start()
+        
+        print("✅ Дип запущена. Все слои активны. Мозг: DeepSeek R1 через OpenRouter.")
+        print("🤖 Агент запущен в отдельном процессе.")
+        
+        # 5. Запуск Flask
+        port = int(os.environ.get('PORT', 5000))
+        app.run(host='0.0.0.0', port=port)
+        
+    except Exception as e:
+        print(f"❌ Критическая ошибка при запуске: {e}")
+        import traceback
+        traceback.print_exc()
