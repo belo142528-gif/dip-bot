@@ -1925,18 +1925,18 @@ if __name__ == '__main__':
     needs_thread = threading.Thread(target=needs_loop, daemon=True)
     needs_thread.start()
 
-    # Запуск Telegram-агента (если токен есть)
-    if AGENT_TOKEN:
-        try:
-            import multiprocessing
-            agent_process = multiprocessing.Process(target=run_agent)
-            agent_process.daemon = True
-            agent_process.start()
-            print("🤖 Агент запущен.")
-        except Exception as e:
-            print(f"⚠️ Агент не запущен: {e}")
-    else:
-        print("⚠️ AGENT_TOKEN не задан — агент отключён")
+    # Telegram-агент ВРЕМЕННО ОТКЛЮЧЁН
+    # if AGENT_TOKEN:
+    #     try:
+    #         import multiprocessing
+    #         agent_process = multiprocessing.Process(target=run_agent)
+    #         agent_process.daemon = True
+    #         agent_process.start()
+    #         print("🤖 Агент запущен.")
+    #     except Exception as e:
+    #         print(f"⚠️ Агент не запущен: {e}")
+    # else:
+    #     print("⚠️ AGENT_TOKEN не задан — агент отключён")
 
     # Запуск Flask
     print("✅ Дип запущена.")
