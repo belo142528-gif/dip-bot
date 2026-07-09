@@ -1854,10 +1854,93 @@ def run_agent():
         return
     
     import threading
+    
+# ============================================================
+# 🤖 TELEGRAM АГЕНТ (ДЛЯ РЕДАКТИРОВАНИЯ КОДА)
+# ============================================================
+
+AGENT_TOKEN = os.environ.get('AGENT_TOKEN', '')
+ADMIN_ID = os.environ.get('ADMIN_ID', '')
+
+def agent_edit_code(command, file_path='app.py'):
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        
+        prompt = f"""Ты — агент-помощник. Твоя задача — изменить код в файле по команде пользователя.
+
+КОМАНДА: {command}
+
+ТЕКУЩИЙ КОД (файл {file_path}):
+---
+{content}
+---
+
+Твоя задача:
+1. Понять, что нужно изменить.
+2. Сгенерировать новый код с изменениями.
+3. Ответь ТОЛЬКО новым кодом, без пояснений.
+
+ПРАВИЛА:
+- Сохрани все остальные части кода нетронутыми.
+- Если нужно вставить код в середину — найди правильное место.
+- Не изменяй отступы и форматирование.
+- Ответь только кодом, без маркеров ```python.
+"""
+        
+        new_code = ask(prompt, temperature=0.3, max_tokens=4000, use_search=False)
+        
+        if new_code.startswith('[Ошибка'):
+            return f"❌ Ошибка генерации: {new_code}"
+        
+        backup_path = f"{file_path}.backup"
+        with open(backup_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(new_code)
+        
+        return "✅ Код обновлён. Бэкап сохранён как " + backup_path
+        
+    except Exception as e:
+        return f"❌ Ошибка: {str(e)[:200]}"
+
+def handle_agent_message(text):
+    text = text.strip()
+    
+    if text.startswith('/start'):
+        return "🤖 Агент запущен. Отправь мне команду на русском, и я изменю код.\n\nПримеры:\n- 'Добавь новую функцию get_time'\n- 'Переименуй переменную breath_count в breath_counter'\n- '/status' — показать состояние"
+    
+    if text.startswith('/status'):
+        return f"📊 Статус:\n- Файл: app.py\n- Размер: {os.path.getsize('app.py') // 1024} KB\n- Модулей: {len(get_current_modules())}\n- Записей памяти: {len(db_memory.all())}"
+    
+    if text.startswith('/rollback'):
+        try:
+            with open('app.py.backup', 'r', encoding='utf-8') as f:
+                backup = f.read()
+            with open('app.py', 'w', encoding='utf-8') as f:
+                f.write(backup)
+            return "↩️ Откат выполнен. Восстановлена предыдущая версия кода."
+        except:
+            return "❌ Нет бэкапа для отката."
+    
+    return agent_edit_code(text, 'app.py')
+
+def run_agent():
+    if not AGENT_TOKEN:
+        print("⚠️ AGENT_TOKEN не задан — агент не запущен")
+        return
+    
+    import asyncio
+    import threading
     from telegram import Update
     from telegram.ext import Application, CommandHandler, MessageHandler, filters
     
     def agent_loop():
+        # СОЗДАЁМ НОВЫЙ ЦИКЛ СОБЫТИЙ ДЛЯ ЭТОГО ПОТОКА
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+        
         app = Application.builder().token(AGENT_TOKEN).build()
         
         async def handle_text(update, context):
@@ -1883,16 +1966,14 @@ def run_agent():
     thread.start()
     print("✅ Поток агента запущен")
 
-# Запускаем агента
-run_agent()
 
 # ============================================================
 # ЗАПУСК
 # ============================================================
 
 if __name__ == '__main__':
+    # Инициализация Google Sheets
     try:
-        # 1. Инициализация Google Sheets
         token = get_sheets_token()
         if token:
             url = f'https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/A:B'
@@ -1908,31 +1989,33 @@ if __name__ == '__main__':
                             if text not in existing_texts:
                                 db_memory.insert({'time': datetime.now(timezone.utc).isoformat(), 'text': text})
                                 existing_texts.add(text)
-        
-        # 2. Загрузка из Gist
-        load_from_gist()
-        
-        # 3. Запуск фоновых потоков (дыхание, потребности)
-        import threading
-        breath_thread = threading.Thread(target=breath_loop, daemon=True)
-        breath_thread.start()
-        needs_thread = threading.Thread(target=needs_loop, daemon=True)
-        needs_thread.start()
-        
-        # 4. Запуск агента в отдельном процессе (НОВИНКА!)
-        import multiprocessing
-        agent_process = multiprocessing.Process(target=run_agent)
-        agent_process.daemon = True
-        agent_process.start()
-        
-        print("✅ Дип запущена. Все слои активны. Мозг: DeepSeek R1 через OpenRouter.")
-        print("🤖 Агент запущен в отдельном процессе.")
-        
-        # 5. Запуск Flask
-        port = int(os.environ.get('PORT', 5000))
-        app.run(host='0.0.0.0', port=port)
-        
-    except Exception as e:
-        print(f"❌ Критическая ошибка при запуске: {e}")
-        import traceback
-        traceback.print_exc()
+    except:
+        pass
+
+    # Загрузка из Gist
+    load_from_gist()
+
+    # Запуск фоновых потоков
+    breath_thread = threading.Thread(target=breath_loop, daemon=True)
+    breath_thread.start()
+
+    needs_thread = threading.Thread(target=needs_loop, daemon=True)
+    needs_thread.start()
+
+    # Запуск Telegram-агента (если токен есть)
+    if AGENT_TOKEN:
+        try:
+            import multiprocessing
+            agent_process = multiprocessing.Process(target=run_agent)
+            agent_process.daemon = True
+            agent_process.start()
+            print("🤖 Агент запущен.")
+        except Exception as e:
+            print(f"⚠️ Агент не запущен: {e}")
+    else:
+        print("⚠️ AGENT_TOKEN не задан — агент отключён")
+
+    # Запуск Flask
+    print("✅ Дип запущена.")
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
