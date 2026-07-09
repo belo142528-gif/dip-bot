@@ -1450,6 +1450,18 @@ def needs_loop():
 
 app = Flask(__name__)
 
+# Запуск агента
+import os as _os
+if _os.environ.get('AGENT_TOKEN'):
+    try:
+        import multiprocessing as _mp
+        _agent = _mp.Process(target=run_agent)
+        _agent.daemon = True
+        _agent.start()
+        print("🤖 Агент запущен в отдельном процессе.")
+    except Exception as e:
+        print(f"⚠️ Агент не запущен: {e}")
+
 HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Дип</title><style>body{margin:0;padding:0;background:#111;color:#eee;font-family:system-ui;height:100vh;display:flex;flex-direction:column}#chat{flex:1;overflow-y:auto;padding:10px}.msg{margin:5px 0;padding:8px 12px;border-radius:15px;max-width:85%;word-wrap:break-word}.user{background:#1a73e8;margin-left:auto;text-align:right}.dip{background:#333;margin-right:auto}#form{display:flex;padding:10px;background:#222}#input{flex:1;padding:10px;border:none;border-radius:20px;background:#444;color:#fff}#send{margin-left:5px;padding:10px 20px;border:none;border-radius:20px;background:#1a73e8;color:#fff}</style></head><body><div id="chat"></div><form id="form" onsubmit="sendMsg(event)"><input id="input" type="text" placeholder="Пиши..." autofocus><button id="send" type="submit">→</button></form><script>function add(text,cls,save){var d=document.createElement("div");d.className="msg "+cls;d.textContent=text;document.getElementById("chat").appendChild(d);document.getElementById("chat").scrollTop=document.getElementById("chat").scrollHeight;if(save!==false){var h=JSON.parse(localStorage.getItem("dip_chat")||"[]");h.push({text:text,cls:cls});if(h.length>200){h=h.slice(-200)}localStorage.setItem("dip_chat",JSON.stringify(h))}}function loadHistory(){var h=JSON.parse(localStorage.getItem("dip_chat")||"[]");h.forEach(function(m){add(m.text,m.cls,false)})}loadHistory();async function sendMsg(e){e.preventDefault();var input=document.getElementById("input");var text=input.value.trim();if(!text)return;add(text,"user");input.value="";try{var r=await fetch("/chat",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({message:text})});var d=await r.json();add(d.reply,"dip")}catch(err){add("Ошибка связи...","dip")}}</script></body></html>'
 
 @app.route('/')
@@ -1917,19 +1929,6 @@ if __name__ == '__main__':
     needs_thread.start()
 
     print("Дип запущена. Все слои активны. Мозг: DeepSeek R1 через OpenRouter.")
-
-    # Запуск агента
-    if AGENT_TOKEN:
-        try:
-            import multiprocessing
-            agent_process = multiprocessing.Process(target=run_agent)
-            agent_process.daemon = True
-            agent_process.start()
-            print("🤖 Агент запущен в отдельном процессе.")
-        except Exception as e:
-            print(f"⚠️ Агент не запущен: {e}")
-    else:
-        print("⚠️ AGENT_TOKEN не задан — агент отключён")
 
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
