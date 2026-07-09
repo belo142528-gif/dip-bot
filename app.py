@@ -1508,7 +1508,7 @@ def generate_response(user_text, speaker_name='Папа'):
         elif msg_len > 50:
             max_tok = 600
         else:
-            max_tok = 600
+            max_tok = 700
 
         core_memory = load_core_memory()
         if core_memory:
