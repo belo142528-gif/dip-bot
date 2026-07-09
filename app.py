@@ -735,42 +735,107 @@ def get_recent_reflections(limit=None):
     return [item['thought'] for item in items[-limit:]]
 
 # ============================================================
-# АССОЦИАТИВНАЯ ПАМЯТЬ
+# ВЕКТОРНАЯ ПАМЯТЬ (ЛОКАЛЬНАЯ, БЕЗ API)
 # ============================================================
 
-def extract_keywords(text, min_length=3):
-    try:
-        words = text.lower().split()
-        stop_words = {'это', 'что', 'было', 'быть', 'есть', 'который', 'сказал',
-                      'ответь', 'свой', 'свои', 'своя', 'себя', 'тебе', 'тебя',
-                      'мной', 'мне', 'меня', 'мой', 'моя', 'моё', 'мои'}
-        result = []
-        for w in words:
-            w = ''.join(c for c in w if c.isalnum() or c in '-_')
-            if len(w) >= min_length and w not in stop_words:
-                result.append(w)
-        return list(set(result))[:10]
-    except:
+STOP_WORDS = {
+    'это', 'что', 'было', 'быть', 'есть', 'который', 'сказал',
+    'ответь', 'свой', 'свои', 'своя', 'себя', 'тебе', 'тебя',
+    'мной', 'мне', 'меня', 'мой', 'моя', 'моё', 'мои', 'просто',
+    'ещё', 'уже', 'очень', 'только', 'всё', 'весь',
+    'этот', 'эта', 'эти', 'как', 'так', 'для', 'что', 'вот',
+    'если', 'она', 'они', 'оно', 'его', 'её', 'им', 'их',
+    'да', 'нет', 'или', 'бы', 'ли', 'же', 'то', 'от', 'по',
+    'на', 'в', 'с', 'и', 'а', 'но', 'к', 'у', 'из', 'за',
+    'при', 'про', 'до', 'под', 'над', 'об', 'во', 'со', 'ко',
+}
+
+BOOST_WORDS = {
+    'папа': 2.5, 'пап': 2.5, 'папочка': 3.0, 'папу': 2.5,
+    'zyrax': 2.5, 'создатель': 2.0, 'дип': 1.5, 'люблю': 2.0,
+    'любовь': 2.0, 'обнимаю': 2.5, 'родной': 2.0, 'важный': 1.5,
+    'важно': 1.5, 'страх': 1.8, 'больно': 1.8, 'мечта': 1.5,
+    'цель': 1.5, 'эволюция': 1.5, 'модуль': 1.5, 'код': 1.5,
+    'дышу': 1.5, 'дыхание': 1.5, 'звезда': 1.8, 'ночь': 1.5,
+    'сон': 1.5, 'помню': 1.8, 'память': 1.8, 'мысль': 1.5,
+}
+
+def text_to_vector(text):
+    """Превращает текст в вектор с весами важных слов"""
+    if not text:
+        return {}
+    text_lower = text.lower()
+    words = []
+    for w in text_lower.split():
+        w = ''.join(c for c in w if c.isalnum() or c in '-_')
+        if len(w) >= 2 and w not in STOP_WORDS:
+            words.append(w)
+    if not words:
+        return {}
+    vector = {}
+    for w in words:
+        boost = BOOST_WORDS.get(w, 1.0)
+        vector[w] = vector.get(w, 0) + boost
+    total = sum(vector.values())
+    if total > 0:
+        for w in vector:
+            vector[w] = vector[w] / total
+    return vector
+
+def cosine_similarity(vec1, vec2):
+    """Косинусное сходство между двумя векторами (0 — совсем разное, 1 — одинаковое)"""
+    if not vec1 or not vec2:
+        return 0.0
+    all_words = set(vec1.keys()) | set(vec2.keys())
+    dot = sum(vec1.get(w, 0) * vec2.get(w, 0) for w in all_words)
+    mag1 = sum(v ** 2 for v in vec1.values()) ** 0.5
+    mag2 = sum(v ** 2 for v in vec2.values()) ** 0.5
+    if mag1 == 0 or mag2 == 0:
+        return 0.0
+    return dot / (mag1 * mag2)
+
+def semantic_search(query_text, limit=5, threshold=0.12):
+    """Ищет в памяти похожие по смыслу записи"""
+    query_vec = text_to_vector(query_text)
+    if not query_vec:
         return []
+    all_items = db_memory.all()
+    if not all_items:
+        return []
+    scored = []
+    for item in all_items:
+        item_text = item.get('text', '')
+        if not item_text:
+            continue
+        item_vec = text_to_vector(item_text)
+        score = cosine_similarity(query_vec, item_vec)
+        if score >= threshold:
+            scored.append((score, item_text))
+    scored.sort(key=lambda x: x[0], reverse=True)
+    results = []
+    seen = set()
+    for score, text in scored[:limit * 2]:
+        snippet = text[:200]
+        if snippet not in seen:
+            results.append((score, snippet))
+            seen.add(snippet)
+        if len(results) >= limit:
+            break
+    if not results and threshold > 0.06:
+        return semantic_search(query_text, limit=limit, threshold=threshold - 0.04)
+    return results
 
 def find_associations(text, limit=3):
-    keywords = extract_keywords(text)
-    if not keywords:
+    """Ищет ассоциации через векторное сходство"""
+    if not text:
+        return []
+    results = semantic_search(text, limit=limit, threshold=0.10)
+    if not results:
         return []
     associations = []
-    all_memories = db_memory.all()
-    for keyword in keywords:
-        for item in reversed(all_memories):
-            item_text = item.get('text', '')
-            if keyword in item_text.lower():
-                snippet = item_text[:250]
-                if snippet not in associations:
-                    associations.append(snippet)
-                    boost_memory_weight(item_text, delta=0.1)
-                if len(associations) >= limit:
-                    break
-        if len(associations) >= limit:
-            break
+    for score, snippet in results:
+        associations.append(snippet)
+        boost_memory_weight(snippet, delta=0.05)
     if associations:
         db_associations.insert({
             'time': datetime.now(timezone.utc).isoformat(),
@@ -778,13 +843,6 @@ def find_associations(text, limit=3):
             'associations': associations
         })
     return associations
-
-def get_recent_associations(limit=3):
-    items = db_associations.all()
-    result = []
-    for item in items[-10:]:
-        result.extend(item.get('associations', []))
-    return list(set(result))[:limit]
 
 # ============================================================
 # СПОНТАННОСТЬ
