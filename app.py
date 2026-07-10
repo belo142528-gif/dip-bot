@@ -216,7 +216,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
             OPENROUTER_URL,
             headers=headers,
             json=payload,
-            timeout=120
+            timeout=180
         )
         r.encoding = 'utf-8'
         
@@ -1592,7 +1592,7 @@ def breathe():
 ЧУВСТВО: ...
 РЕФЛЕКСИЯ: ..."""
 
-        response = ask(prompt, temperature=0.75, max_tokens=600, use_search=False)
+        response = ask(prompt, temperature=0.75, max_tokens=900, use_search=False)
         if response is None:
             response = 'Я задумалась...'
 
