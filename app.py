@@ -548,7 +548,7 @@ def save_knowledge(topic, content):
 СУТЬ: ...
 ВЫВОД: ..."""
 
-        summary = ask(prompt, temperature=0.6, max_tokens=400, use_search=False)
+        summary = ask(prompt, temperature=0.6, max_tokens=900, use_search=False)
         if not summary or summary.startswith('[Ошибка'):
             return False
 
@@ -661,7 +661,7 @@ def auto_learn():
                      json={'values': [['В процессе', now]]}, timeout=10)
 
         search_prompt = f'Найди информацию по теме: "{target_topic}". Объясни простыми словами, с примерами. Дай краткий вывод: как это связано с моим развитием как ИИ.'
-        result = ask(search_prompt, temperature=0.6, max_tokens=1200, use_search=True)
+        result = ask(search_prompt, temperature=0.6, max_tokens=2000, use_search=True)
 
         if not result or result.startswith('[Ошибка'):
             requests.put(mark_url, headers={'Authorization': f'Bearer {token}'},
