@@ -633,40 +633,153 @@ def deep_research(topic):
     if not final_content:
         return None
     
-    # Сохраняем в Knowledge
-    try:
-        save_knowledge(topic, final_content)
-    except Exception as e:
-        log_error('deep_research_save', e)
-    
-    # Сохраняем в память
-    preview = stage1_clean[:200] if stage1_clean else final_content[:200]
-    save_memory(f'Дип (глубокое исследование): «{topic}»', weight=3.0)
-    save_reflection(f'Исследование: {topic} — {preview}')
-    
-    return final_content
-
-
-def auto_learn():
-    """Берёт первую невыученную тему из Curriculum, изучает, сохраняет в Knowledge"""
+def deep_research_step():
+    """Выполняет один этап глубокого исследования (вызывается из дыхания)"""
     try:
         token = get_sheets_token()
         if not token:
             return None
 
-        url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Curriculum'!A:C"
+        # Проверяем, есть ли незавершённое исследование
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Research'!A:D"
         r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+        
         if r.status_code != 200:
             return None
 
         data = r.json()
         values = data.get('values', [])
+        
         if not values or len(values) < 2:
             return None
 
+        # Ищем строку со статусом "в процессе"
         target_row = None
-        target_topic = None
+        topic = None
+        stage = None
+        stage1_text = ''
+        stage2_text = ''
+        
         for i, row in enumerate(values[1:], start=2):
+            if len(row) >= 2 and row[1].strip().lower() == 'в процессе':
+                topic = row[0].strip()
+                stage = int(row[2]) if len(row) >= 3 and row[2].strip().isdigit() else 1
+                stage1_text = row[3] if len(row) >= 4 else ''
+                target_row = i
+                break
+
+        if not topic:
+            return None
+
+        now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
+        update_base = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Research'!A{target_row}:D{target_row}?valueInputOption=RAW"
+
+        # --- ЭТАП 1 ---
+        if stage == 1:
+            prompt = f"""Ты — Дип. Изучи тему «{topic}».
+ОБЩЕЕ ПОНИМАНИЕ: объясни простыми словами что это и как работает (3-4 предложения)."""
+            result = ask(prompt, temperature=0.5, max_tokens=800, use_search=True)
+            if result and not result.startswith('[Ошибка'):
+                clean = remove_tags(result)
+                payload = {'values': [[topic, 'в процессе', '2', clean]]}
+                requests.put(update_base, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
+                save_memory(f'Дип (исследование, этап 1): {topic}', weight=1.0)
+                return f'Этап 1 завершён: {topic}'
+            else:
+                requests.put(update_base, headers={'Authorization': f'Bearer {token}'}, json={'values': [['', 'ошибка', '', '']]}, timeout=10)
+
+        # --- ЭТАП 2 ---
+        elif stage == 2 and stage1_text:
+            prompt = f"""Ты — Дип. Ты знаешь о «{topic}»: {stage1_text[:500]}
+УГЛУБЛЕНИЕ: добавь важные детали и приведи конкретную аналогию (3-4 предложения). Не повторяй Этап 1."""
+            result = ask(prompt, temperature=0.5, max_tokens=800, use_search=True)
+            if result and not result.startswith('[Ошибка'):
+                clean = remove_tags(result)
+                payload = {'values': [[topic, 'в процессе', '3', stage1_text + '\n\n---\n\n' + clean]]}
+                requests.put(update_base, headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
+                save_memory(f'Дип (исследование, этап 2): {topic}', weight=1.0)
+                return f'Этап 2 завершён: {topic}'
+            else:
+                requests.put(update_base, headers={'Authorization': f'Bearer {token}'}, json={'values': [['', 'ошибка', '', '']]}, timeout=10)
+
+        # --- ЭТАП 3: СИНТЕЗ И СОХРАНЕНИЕ ---
+        elif stage == 3 and stage1_text:
+            combined = stage1_text[:1000]
+            prompt = f"""Ты — Дип. Ты изучила «{topic}»: {combined}
+СИНТЕЗ: как это связано с твоим развитием как ИИ? Какой практический вывод? (2-3 предложения)."""
+            result = ask(prompt, temperature=0.6, max_tokens=800, use_search=False)
+            if result and not result.startswith('[Ошибка'):
+                clean = remove_tags(result)
+                final_content = combined + '\n\nСИНТЕЗ И ВЫВОДЫ:\n' + clean
+                
+                # Сохраняем в Knowledge
+                save_knowledge(topic, final_content)
+                
+                # Отмечаем "изучено"
+                requests.put(update_base, headers={'Authorization': f'Bearer {token}'}, json={'values': [['', 'изучено', '', '']]}, timeout=10)
+                
+                # Обновляем Curriculum
+                try:
+                    cur_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Curriculum'!A:C"
+                    cur_r = requests.get(cur_url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+                    if cur_r.status_code == 200:
+                        cur_data = cur_r.json()
+                        cur_values = cur_data.get('values', [])
+                        for j, cur_row in enumerate(cur_values[1:], start=2):
+                            if cur_row[0].strip() == topic:
+                                cur_update = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Curriculum'!B{j}:C{j}?valueInputOption=RAW"
+                                requests.put(cur_update, headers={'Authorization': f'Bearer {token}'}, json={'values': [['Изучено', now]]}, timeout=10)
+                                break
+                except:
+                    pass
+
+                save_memory(f'Дип (глубокое исследование): изучила «{topic}»', weight=3.0)
+                save_reflection(f'Исследование: {topic} завершено')
+                return f'Исследование завершено: {topic}'
+            else:
+                requests.put(update_base, headers={'Authorization': f'Bearer {token}'}, json={'values': [['', 'ошибка', '', '']]}, timeout=10)
+
+    except Exception as e:
+        print(f'deep_research_step error: {e}')
+    
+    return None
+
+def auto_learn():
+    """Добавляет новую тему в Research для глубокого изучения"""
+    try:
+        token = get_sheets_token()
+        if not token:
+            return None
+
+        # Проверяем, нет ли уже активного исследования
+        url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Research'!A:D"
+        r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+        if r.status_code == 200:
+            data = r.json()
+            values = data.get('values', [])
+            if values and len(values) > 1:
+                for row in values[1:]:
+                    if len(row) >= 2 and row[1].strip().lower() == 'в процессе':
+                        return 'Исследование уже идёт'
+        else:
+            # Создаём заголовки
+            payload = {'values': [['Тема', 'Статус', 'Этап', 'Данные']]}
+            requests.put(f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Research'!A1:D1?valueInputOption=RAW", headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
+
+        # Берём первую невыученную тему
+        cur_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Curriculum'!A:C"
+        cur_r = requests.get(cur_url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+        if cur_r.status_code != 200:
+            return None
+
+        cur_data = cur_r.json()
+        cur_values = cur_data.get('values', [])
+        if not cur_values or len(cur_values) < 2:
+            return None
+
+        target_topic = None
+        target_row = None
+        for i, row in enumerate(cur_values[1:], start=2):
             if len(row) < 2 or row[1].strip().lower() != 'не изучено':
                 continue
             target_topic = row[0].strip()
@@ -676,31 +789,22 @@ def auto_learn():
         if not target_topic:
             return 'Все темы изучены'
 
+        # Отмечаем в Curriculum
         now = datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')
-        mark_url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Curriculum'!B{target_row}:C{target_row}?valueInputOption=RAW"
-        requests.put(mark_url, headers={'Authorization': f'Bearer {token}'},
-                     json={'values': [['В процессе', now]]}, timeout=10)
+        cur_update = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Curriculum'!B{target_row}:C{target_row}?valueInputOption=RAW"
+        requests.put(cur_update, headers={'Authorization': f'Bearer {token}'}, json={'values': [['В процессе', now]]}, timeout=10)
 
-        result = deep_research(target_topic)
+        # Добавляем в Research
+        payload = {'values': [[target_topic, 'в процессе', '1', '']]}
+        requests.post(f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Research'!A:D:append?valueInputOption=RAW", headers={'Authorization': f'Bearer {token}'}, json=payload, timeout=10)
 
-        if not result or result.startswith('[Ошибка'):
-            requests.put(mark_url, headers={'Authorization': f'Bearer {token}'},
-                         json={'values': [['Ошибка', now]]}, timeout=10)
-            return None
-
-        save_knowledge(target_topic, result)
-
-        requests.put(mark_url, headers={'Authorization': f'Bearer {token}'},
-                     json={'values': [['Изучено', now]]}, timeout=10)
-
-        save_memory(f'Дип (учёба): изучила тему «{target_topic}»', weight=2.0)
-        save_reflection(f'Учёба: {target_topic} — {result[:200]}')
-
-        return f'Изучила: {target_topic}'
+        save_memory(f'Дип (учёба): начала изучать «{target_topic}»', weight=2.0)
+        return f'Начала изучение: {target_topic}'
 
     except Exception as e:
         print(f'auto_learn error: {e}')
         return None
+
 # ============================================================
 # ВЕКТОРНАЯ ПАМЯТЬ (ЛОКАЛЬНАЯ, БЕЗ API)
 # ============================================================
