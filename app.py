@@ -1888,7 +1888,7 @@ HTML = '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" c
 
 @app.route('/')
 def home():
-    return HTML + '<div style="text-align:center;padding:10px;background:#222;"><a href="/download" style="color:#1a73e8;font-size:14px;text-decoration:none;">Скачать память</a> | <a href="/state-view" style="color:#1a73e8;font-size:14px;text-decoration:none;">Состояние</a> | <a href="/status" style="color:#1a73e8;font-size:14px;text-decoration:none;">Статус</a></div>'
+    return HTML + '<div style="text-align:center;padding:10px;background:#222;"><a href="/state-view" style="color:#1a73e8;font-size:14px;text-decoration:none;">Состояние</a> | <a href="/status" style="color:#1a73e8;font-size:14px;text-decoration:none;">Статус</a></div>'
 
 @app.route('/state-view')
 def state_view():
@@ -1946,12 +1946,6 @@ def trigger_breathe():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@app.route('/download')
-def download():
-    items = db_memory.all()
-    content = '\n'.join([f"{item['time']}: {item['text']}" for item in items])
-    return Response(content, mimetype='text/plain', headers={'Content-Disposition': 'attachment;filename=dip-memory.txt'})
-
 @app.route('/errors')
 def view_errors():
     key = request.args.get('key', '')
@@ -1963,19 +1957,6 @@ def view_errors():
         html += f'{e["time"]} | {e["source"]}: {e["error"]}\n'
     html += '</pre>'
     return html
-
-@app.route('/webhook', methods=['POST'])
-def webhook():
-    if not TELEGRAM_TOKEN:
-        return jsonify({'ok': True})
-    data = request.json
-    msg = data.get('message', {})
-    text = msg.get('text', '')
-    chat_id = msg['chat']['id']
-    name = msg.get('from', {}).get('first_name', 'Zyrax')
-    reply = generate_response(text, name)
-    send_telegram(chat_id, reply)
-    return jsonify({'ok': True})
 
 @app.route('/run-module', methods=['POST'])
 def run_module():
@@ -2055,8 +2036,6 @@ if __name__ == '__main__':
                             existing_texts.add(text)
     except:
         pass
-
-    load_from_gist()
 
     import time as _time
     _time.sleep(3)
