@@ -1574,6 +1574,12 @@ def breathe():
                 auto_learn()
             except:
                 pass
+
+        elif action == 'deep_research_step':
+            try:
+                deep_research_step()
+            except:
+                pass
         
         elif action == 'update_self_model':
             try:
