@@ -1397,6 +1397,23 @@ def decide_action():
                     return ('auto_learn', {})
     except:
         pass
+
+    # Шаг глубокого исследования — каждый час
+    try:
+        last_step = db_memory_meta.search(Query().text.matches('Дип \\(исследование, этап'))
+        should_step = False
+        if not last_step:
+            should_step = True
+        else:
+            last_time = last_step[-1].get('created', '')
+            if last_time:
+                last_dt = datetime.fromisoformat(last_time)
+                if (datetime.now(timezone.utc) - last_dt).total_seconds() > 3600:
+                    should_step = True
+        if should_step:
+            return ('deep_research_step', {})
+    except:
+        pass
     
     # Модель себя — раз в день
     try:
