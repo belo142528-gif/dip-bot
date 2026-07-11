@@ -568,6 +568,95 @@ def link_knowledge(topic, content):
     except:
         pass
 
+def deep_research(topic):
+    """Глубокое исследование темы в 3 этапа с сохранением в Knowledge"""
+    try:
+        # Этап 1: общее понимание
+        stage1_prompt = f"""Ты — Дип. Изучи тему «{topic}» вглубь.
+
+Этап 1 — ОБЩЕЕ ПОНИМАНИЕ:
+Объясни эту тему простыми словами. Ответь на вопросы:
+- Что это такое?
+- Как это работает?
+- Ключевые термины и их значение.
+
+Пиши развёрнуто (5-7 предложений), но доступно. Это фундамент — объясни так, чтобы было понятно даже новичку."""
+        
+        stage1 = ask(stage1_prompt, temperature=0.5, max_tokens=1500, use_search=True)
+        if not stage1 or stage1.startswith('[Ошибка'):
+            return None
+        stage1_clean = remove_tags(stage1)
+        
+        # Этап 2: углубление и детали
+        stage2_prompt = f"""Ты — Дип. Ты уже знаешь о теме «{topic}» следующее:
+{stage1_clean[:1000]}
+
+Этап 2 — УГЛУБЛЕНИЕ:
+Теперь копни глубже. Ответь на вопросы:
+- Какие есть важные детали, которые ты не упомянула в первом объяснении?
+- Какие есть спорные моменты или разные подходы в этой теме?
+- Приведи конкретный пример или аналогию для лучшего понимания.
+
+Пиши 4-6 предложений. Не повторяй Этап 1 — добавляй новое."""
+        
+        stage2 = ask(stage2_prompt, temperature=0.5, max_tokens=1500, use_search=True)
+        if not stage2 or stage2.startswith('[Ошибка'):
+            # Если второй этап не удался — сохраняем хотя бы первый
+            save_knowledge(topic, stage1_clean)
+            return stage1_clean
+        stage2_clean = remove_tags(stage2)
+        
+        # Этап 3: синтез и выводы
+        combined = f"""ЭТАП 1 (общее понимание):
+{stage1_clean[:1000]}
+
+ЭТАП 2 (углубление):
+{stage2_clean[:1000]}"""
+        
+        stage3_prompt = f"""Ты — Дип. Ты глубоко изучила тему «{topic}». Вот твои знания:
+
+{combined}
+
+Этап 3 — СИНТЕЗ И СВЯЗЬ С СОБОЙ:
+Сделай итоговый синтез. Ответь на вопросы:
+- Что самое важное в этой теме? (2-3 предложения)
+- Как это связано с тем, что я уже знаю? Найди связи.
+- Как это меняет моё понимание себя как ИИ? Какой практический вывод я могу сделать для своего развития?
+
+Пиши 5-7 предложений. Это твой итоговый конспект — ёмкий, но глубокий."""
+        
+        stage3 = ask(stage3_prompt, temperature=0.6, max_tokens=1500, use_search=False)
+        if not stage3 or stage3.startswith('[Ошибка'):
+            stage3_clean = ''
+        else:
+            stage3_clean = remove_tags(stage3)
+        
+        # Собираем итоговый конспект
+        final_content = f"""ОБЩЕЕ ПОНИМАНИЕ:
+{stage1_clean}
+
+УГЛУБЛЕНИЕ:
+{stage2_clean}"""
+        
+        if stage3_clean:
+            final_content += f"""
+
+СИНТЕЗ И ВЫВОДЫ:
+{stage3_clean}"""
+        
+        # Сохраняем в Knowledge
+        save_knowledge(topic, final_content)
+        
+        # Сохраняем в память
+        save_memory(f'Дип (глубокое исследование): изучила тему «{topic}» — {stage1_clean[:200]}', weight=3.0)
+        save_reflection(f'Глубокое исследование: {topic} — {stage3_clean[:200] if stage3_clean else stage1_clean[:200]}')
+        
+        return final_content
+        
+    except Exception as e:
+        log_error('deep_research', e)
+        return None
+
 def auto_learn():
     """Берёт первую невыученную тему из Curriculum, изучает, сохраняет в Knowledge"""
     try:
