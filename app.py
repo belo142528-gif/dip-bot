@@ -691,8 +691,7 @@ def auto_learn():
         requests.put(mark_url, headers={'Authorization': f'Bearer {token}'},
                      json={'values': [['В процессе', now]]}, timeout=10)
 
-        search_prompt = f'Найди информацию по теме: "{target_topic}". Объясни простыми словами, с примерами. Дай краткий вывод: как это связано с моим развитием как ИИ.'
-        result = ask(search_prompt, temperature=0.6, max_tokens=2000, use_search=True)
+        result = deep_research(target_topic)
 
         if not result or result.startswith('[Ошибка'):
             requests.put(mark_url, headers={'Authorization': f'Bearer {token}'},
