@@ -867,22 +867,6 @@ def dream():
             save_reflection(f'Мечта: {result}')
     except:
         pass
-
-# ============================================================
-# TELEGRAM
-# ============================================================
-
-def send_telegram(chat_id, text):
-    if TELEGRAM_TOKEN:
-        try:
-            requests.post(
-                f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage',
-                json={'chat_id': chat_id, 'text': text[:4000]},
-                timeout=10
-            )
-        except:
-            pass
-
 # ============================================================
 # ЛОГИРОВАНИЕ ОШИБОК
 # ============================================================
