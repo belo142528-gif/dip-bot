@@ -252,6 +252,7 @@ def ask(prompt, temperature=0.95, max_tokens=2000, use_search=False):
         return '[Ошибка: таймаут запроса]'
     except Exception as e:
         return f'[Ошибка связи: {str(e)}]'
+
 # ============================================================
 # УТИЛИТЫ: ПАМЯТЬ
 # ============================================================
@@ -348,71 +349,12 @@ def save_memory(text, weight=1.0, emotion=None):
     })
     with counter_lock:
         message_counter += 1
-        if message_counter % 10 == 0:
-            sync_to_gist()
 
 def boost_memory_weight(text_pattern, delta=0.2):
     items = db_memory_meta.search(Query().text.matches(text_pattern))
     for item in items:
         new_weight = max(0.1, min(5.0, item.get('weight', 1.0) + delta))
         db_memory_meta.update({'weight': new_weight}, doc_ids=[item.doc_id])
-
-def sync_to_gist():
-    global GIST_ID
-    if not GIST_TOKEN:
-        return
-    try:
-        items = db_memory.all()
-        content = '\n'.join([f"{item['time']}: {item['text']}" for item in items])
-        payload = {
-            'description': 'dip-memory',
-            'public': False,
-            'files': {'dip.txt': {'content': content}}
-        }
-        headers = {
-            'Authorization': f'token {GIST_TOKEN}',
-            'Content-Type': 'application/json'
-        }
-        if GIST_ID:
-            requests.patch(
-                f'https://api.github.com/gists/{GIST_ID}',
-                data=json.dumps(payload), headers=headers, timeout=15
-            )
-        else:
-            r = requests.post(
-                'https://api.github.com/gists',
-                data=json.dumps(payload), headers=headers, timeout=15
-            )
-            if r.status_code == 201:
-                GIST_ID = r.json().get('id')
-    except:
-        pass
-
-def load_from_gist():
-    global GIST_ID
-    if not GIST_TOKEN or not GIST_ID:
-        return
-    try:
-        headers = {'Authorization': f'token {GIST_TOKEN}'}
-        r = requests.get(f'https://api.github.com/gists/{GIST_ID}', headers=headers, timeout=15)
-        if r.status_code == 200:
-            files = r.json().get('files', {})
-            content = files.get('dip.txt', {}).get('content', '')
-            if content:
-                existing_texts = {item['text'] for item in db_memory.all()}
-                for line in content.strip().split('\n'):
-                    if ': ' in line:
-                        text = line.split(': ', 1)[-1]
-                        if text not in existing_texts:
-                            db_memory.insert({'time': datetime.now(timezone.utc).isoformat(), 'text': text})
-                            db_memory_meta.insert({
-                                'text': text, 'weight': 1.0,
-                                'access_count': 0, 'created': datetime.now(timezone.utc).isoformat(),
-                                'tags': ''
-                            })
-                            existing_texts.add(text)
-    except:
-        pass
 
 def consolidate_memory():
     try:
