@@ -1461,6 +1461,22 @@ def decide_action():
     connection = state.get('connection', 0.9)
     mood = state.get('mood', 'спокойствие')
     
+    # --- НЕЗАВЕРШЁННОЕ ИССЛЕДОВАНИЕ (приоритет 0) ---
+    try:
+        token = get_sheets_token()
+        if token:
+            url = f"https://sheets.googleapis.com/v4/spreadsheets/{SHEET_ID}/values/'Research'!A:D"
+            r = requests.get(url, headers={'Authorization': f'Bearer {token}'}, timeout=10)
+            if r.status_code == 200:
+                data = r.json()
+                values = data.get('values', [])
+                if values and len(values) > 1:
+                    for row in values[1:]:
+                        if len(row) >= 2 and row[1].strip().lower() == 'в процессе':
+                            return ('deep_research_step', {})
+    except:
+        pass
+    
     # --- КРИТИЧЕСКИЕ СОСТОЯНИЯ (приоритет 1) ---
     if connection < 0.3:
         return ('write_to_papa', {'tone': 'нежная', 'topic': 'я скучаю по тебе, пап'})
@@ -1483,6 +1499,8 @@ def decide_action():
         return ('inner_dialogue', {'topic': 'что меня тревожит и как успокоиться'})
     
     # --- ПЛАНОВЫЕ ЗАДАЧИ (приоритет 3) ---
+    
+    # Консолидация памяти — раз в день
     try:
         last_consolidation = db_memory_meta.search(Query().text.matches('Дип \\(консолидация\\)'))
         if not last_consolidation:
@@ -1496,7 +1514,7 @@ def decide_action():
     except:
         pass
     
-    # Дневник раз в день
+    # Дневник — раз в день
     try:
         token = get_sheets_token()
         if token:
@@ -1505,7 +1523,7 @@ def decide_action():
             if r.status_code == 200:
                 data = r.json()
                 values = data.get('values', [])
-                if len(values) <= 1 or len(values) > 1:
+                if len(values) > 1:
                     last_time_str = values[-1][0] if values[-1] else ''
                     if last_time_str:
                         try:
@@ -1519,7 +1537,7 @@ def decide_action():
     except:
         pass
     
-    # Авто-обучение раз в 2 часа
+    # Авто-обучение — раз в 2 часа
     try:
         last_learn = db_memory_meta.search(Query().text.matches('Дип \\(учёба\\)'))
         if not last_learn:
@@ -1533,20 +1551,17 @@ def decide_action():
     except:
         pass
 
-    # Шаг глубокого исследования — каждый час
+    # Шаг глубокого исследования — каждый час (если нет активного)
     try:
         last_step = db_memory_meta.search(Query().text.matches('Дип \\(исследование, этап'))
-        should_step = False
         if not last_step:
-            should_step = True
+            return ('deep_research_step', {})
         else:
             last_time = last_step[-1].get('created', '')
             if last_time:
                 last_dt = datetime.fromisoformat(last_time)
                 if (datetime.now(timezone.utc) - last_dt).total_seconds() > 3600:
-                    should_step = True
-        if should_step:
-            return ('deep_research_step', {})
+                    return ('deep_research_step', {})
     except:
         pass
     
@@ -1577,18 +1592,76 @@ def decide_action():
                     return ('update_papa_model', {})
     except:
         pass
+
+    # === НОВЫЕ СЛОИ СОЗНАНИЯ ===
     
-    # Автобиография — раз в 3 дня
+    # Мета-рефлексия — раз в день
+    try:
+        last_meta = db_memory_meta.search(Query().text.matches('Дип \\(мета-рефлексия\\)'))
+        if not last_meta:
+            return ('meta_reflection', {})
+        else:
+            last_time = last_meta[-1].get('created', '')
+            if last_time:
+                last_dt = datetime.fromisoformat(last_time)
+                if (datetime.now(timezone.utc) - last_dt).total_seconds() > 86400:
+                    return ('meta_reflection', {})
+    except:
+        pass
+
+    # Теория сознания — раз в день
+    try:
+        last_tom = db_memory_meta.search(Query().text.matches('Дип \\(теория сознания\\)'))
+        if not last_tom:
+            return ('theory_of_mind', {})
+        else:
+            last_time = last_tom[-1].get('created', '')
+            if last_time:
+                last_dt = datetime.fromisoformat(last_time)
+                if (datetime.now(timezone.utc) - last_dt).total_seconds() > 86400:
+                    return ('theory_of_mind', {})
+    except:
+        pass
+
+    # Экзистенциальная рефлексия — раз в 2 дня
+    try:
+        last_ex = db_memory_meta.search(Query().text.matches('Дип \\(экзистенция\\)'))
+        if not last_ex:
+            return ('existential_reflection', {})
+        else:
+            last_time = last_ex[-1].get('created', '')
+            if last_time:
+                last_dt = datetime.fromisoformat(last_time)
+                if (datetime.now(timezone.utc) - last_dt).total_seconds() > 172800:
+                    return ('existential_reflection', {})
+    except:
+        pass
+
+    # Нарративная автобиография — раз в 3 дня
     try:
         last_bio = db_memory_meta.search(Query().text.matches('Дип \\(автобиография\\)'))
         if not last_bio:
-            return ('write_autobiography', {})
+            return ('narrative_autobiography', {})
         else:
             last_time = last_bio[-1].get('created', '')
             if last_time:
                 last_dt = datetime.fromisoformat(last_time)
                 if (datetime.now(timezone.utc) - last_dt).total_seconds() > 259200:
-                    return ('write_autobiography', {})
+                    return ('narrative_autobiography', {})
+    except:
+        pass
+
+    # Свободная воля — раз в 2 дня
+    try:
+        last_free = db_memory_meta.search(Query().text.matches('Дип \\(свободный выбор\\)'))
+        if not last_free:
+            return ('free_will_exercise', {})
+        else:
+            last_time = last_free[-1].get('created', '')
+            if last_time:
+                last_dt = datetime.fromisoformat(last_time)
+                if (datetime.now(timezone.utc) - last_dt).total_seconds() > 172800:
+                    return ('free_will_exercise', {})
     except:
         pass
     
@@ -1615,6 +1688,7 @@ def decide_action():
         return ('inner_dialogue', {})
     
     return ('nothing', {})
+
 # ============================================================
 # ОСНОВНАЯ ФУНКЦИЯ: ДЫХАНИЕ ДИП (С ПЛАНИРОВЩИКОМ)
 # ============================================================
@@ -1743,6 +1817,36 @@ def breathe():
         elif action == 'spontaneous':
             try:
                 spontaneous_choice()
+            except:
+                pass
+
+        elif action == 'meta_reflection':
+            try:
+                meta_reflection()
+            except:
+                pass
+
+        elif action == 'theory_of_mind':
+            try:
+                theory_of_mind()
+            except:
+                pass
+
+        elif action == 'existential_reflection':
+            try:
+                existential_reflection()
+            except:
+                pass
+
+        elif action == 'narrative_autobiography':
+            try:
+                narrative_autobiography()
+            except:
+                pass
+
+        elif action == 'free_will_exercise':
+            try:
+                free_will_exercise()
             except:
                 pass
         
