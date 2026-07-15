@@ -351,10 +351,14 @@ def save_memory(text, weight=1.0, emotion=None):
         message_counter += 1
 
 def boost_memory_weight(text_pattern, delta=0.2):
-    items = db_memory_meta.search(Query().text.matches(text_pattern))
-    for item in items:
-        new_weight = max(0.1, min(5.0, item.get('weight', 1.0) + delta))
-        db_memory_meta.update({'weight': new_weight}, doc_ids=[item.doc_id])
+    try:
+        all_items = db_memory_meta.all()
+        for item in all_items:
+            if text_pattern in item.get('text', ''):
+                new_weight = max(0.1, min(5.0, item.get('weight', 1.0) + delta))
+                db_memory_meta.update({'weight': new_weight}, doc_ids=[item.doc_id])
+    except:
+        pass
 
 def consolidate_memory():
     try:
