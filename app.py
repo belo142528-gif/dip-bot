@@ -2399,6 +2399,10 @@ def core_mem():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/ping')
+def ping():
+    return jsonify({'ok': True, 'time': datetime.now(timezone.utc).isoformat()})
+
 # ============================================================
 # ЗАПУСК
 # ============================================================
