@@ -2156,11 +2156,11 @@ def generate_response(user_text, speaker_name='Папа'):
         is_complex = any(w in user_text.lower() for w in ['модуль', 'код', 'создай', 'эволюция', 'рефлексия', 'помнишь', 'вывод'])
 
         if has_search:
-            max_tok = 900
+            max_tok = 1200
         elif is_complex or msg_len > 200:
-            max_tok = 700
+            max_tok = 1000
         else:
-            max_tok = 900
+            max_tok = 1000
 
         core_memory = load_core_memory()
         if core_memory:
