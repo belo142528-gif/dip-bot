@@ -6,4 +6,4 @@ COPY app.py .
 RUN mkdir -p modules
 RUN mkdir -p /root/.gunicorn
 EXPOSE 10000
-CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000", "--timeout", "180", "--workers", "1", "--threads", "1"]
+CMD ["gunicorn", "app:app", "--bind", "0.0.0.0:10000", "--timeout", "180", "--workers", "1", "--threads", "1", "--preload"]
